@@ -1,5 +1,6 @@
 // ── Config ────────────────────────────────────────────────────────────────────
 const API = 'https://delta-server-vyed.onrender.com';
+const ADMIN_USER = 'Rennivik';
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let state = {
@@ -15,13 +16,74 @@ let state = {
   cmdItems: [],
   uploadFile: null,
   searchQuery: '',
+  unreadCount: 0,
 };
 
-// ── Avatar seeds ──────────────────────────────────────────────────────────────
 const AVATAR_SEEDS = ['alpha','beta','gamma','delta','echo','foxtrot','golf','hotel','india','juliet','kilo','lima'];
 
+// ── API Wake-up / Loading Screen ──────────────────────────────────────────────
+async function waitForAPI() {
+  const overlay = document.getElementById('wake-overlay');
+  const statusEl = document.getElementById('wake-status');
+  const barEl = document.getElementById('wake-bar');
+  const dotsEl = document.getElementById('wake-dots');
+
+  let attempts = 0;
+  let dotCount = 0;
+  const dotInterval = setInterval(() => {
+    dotCount = (dotCount + 1) % 4;
+    if (dotsEl) dotsEl.textContent = '.'.repeat(dotCount);
+  }, 400);
+
+  // Animate bar slowly while waiting
+  let barProg = 0;
+  const barInterval = setInterval(() => {
+    barProg = Math.min(barProg + (Math.random() * 3), 85);
+    if (barEl) barEl.style.width = barProg + '%';
+  }, 300);
+
+  while (true) {
+    attempts++;
+    try {
+      const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        clearInterval(dotInterval);
+        clearInterval(barInterval);
+        if (statusEl) statusEl.textContent = 'Connected!';
+        if (barEl) barEl.style.width = '100%';
+        if (dotsEl) dotsEl.textContent = '';
+        await new Promise(r => setTimeout(r, 500));
+        // Fade out overlay
+        if (overlay) {
+          overlay.style.transition = 'opacity 0.4s ease';
+          overlay.style.opacity = '0';
+          await new Promise(r => setTimeout(r, 400));
+          overlay.classList.add('hidden');
+          overlay.style.opacity = '';
+        }
+        return;
+      }
+    } catch {}
+
+    const messages = [
+      'Waking up the server',
+      'Still warming up',
+      'Almost there',
+      'Hang tight',
+      'Nearly ready',
+    ];
+    const msg = messages[Math.min(Math.floor(attempts / 3), messages.length - 1)];
+    if (statusEl) statusEl.textContent = msg;
+
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Show wake screen and wait for API before doing anything
+  await waitForAPI();
+
   loadAuth();
   renderNavActions();
   navigate('home');
@@ -29,7 +91,38 @@ document.addEventListener('DOMContentLoaded', () => {
   initSearch();
   buildAvatarPicker();
   initPasswordStrength();
+  preloadFiles();
+
+  // Poll unread messages every 30s if logged in
+  setInterval(() => { if (state.user) refreshUnreadCount(); }, 30000);
 });
+
+async function preloadFiles() {
+  try {
+    const res = await api('GET', '/files');
+    state.files = res.files || [];
+  } catch {}
+}
+
+async function refreshUnreadCount() {
+  if (!state.user) return;
+  try {
+    const res = await api('GET', '/messages/unread');
+    state.unreadCount = res.unread || 0;
+    updateInboxBadge();
+  } catch {}
+}
+
+function updateInboxBadge() {
+  const badge = document.getElementById('inbox-badge');
+  if (!badge) return;
+  if (state.unreadCount > 0) {
+    badge.textContent = state.unreadCount > 9 ? '9+' : state.unreadCount;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function loadAuth() {
@@ -38,6 +131,7 @@ function loadAuth() {
   if (token && user) {
     state.token = token;
     state.user = JSON.parse(user);
+    refreshUnreadCount();
   }
 }
 
@@ -55,6 +149,7 @@ async function handleLogin() {
     localStorage.setItem('delta_user', JSON.stringify(res.user));
     closeAuthModal();
     renderNavActions();
+    refreshUnreadCount();
     toast(`Welcome back, ${res.user.username}! 👋`, 'success');
     navigate('home');
   } catch (e) {
@@ -74,14 +169,10 @@ async function handleRegister() {
   setLoading(btn, true);
   try {
     const res = await api('POST', '/auth/register', { username, password, avatar });
-    state.token = res.token;
-    state.user = res.user;
-    localStorage.setItem('delta_token', res.token);
-    localStorage.setItem('delta_user', JSON.stringify(res.user));
     closeAuthModal();
-    renderNavActions();
-    toast(`Welcome to Delta, ${username}! 🎉`, 'success');
-    navigate('home');
+    // Show pending message
+    showPendingNotice(username);
+    toast(`Account request submitted! Waiting for admin approval.`, 'info', 6000);
   } catch (e) {
     toast(e.message || 'Registration failed', 'error');
   } finally {
@@ -89,9 +180,32 @@ async function handleRegister() {
   }
 }
 
+function showPendingNotice(username) {
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="empty-state" style="padding:80px 20px;">
+      <div class="empty-state-icon">⏳</div>
+      <h3>Account pending approval</h3>
+      <p style="max-width:360px;margin:0 auto 20px;">
+        Your account request for <strong>${escapeHtml(username)}</strong> has been submitted.
+        The admin will review it shortly — you'll receive a notification once approved.
+      </p>
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:16px 20px;max-width:360px;margin:0 auto;text-align:left;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">What happens next</div>
+        <div style="font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:6px;">
+          <div>1. Admin reviews your request</div>
+          <div>2. You get approved or denied</div>
+          <div>3. Sign in once approved</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function logout() {
   state.user = null;
   state.token = null;
+  state.unreadCount = 0;
   localStorage.removeItem('delta_token');
   localStorage.removeItem('delta_user');
   renderNavActions();
@@ -123,6 +237,10 @@ function renderNavActions() {
         <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Z"/></svg>
         Upload
       </button>
+      <button class="btn btn-ghost btn-icon" onclick="navigate('inbox')" title="Inbox" style="position:relative;">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M0 4.75C0 3.784.784 3 1.75 3h12.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25ZM8 9.5l-4.5-3h9Z"/></svg>
+        <span id="inbox-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;"></span>
+      </button>
       <div class="nav-divider"></div>
       <div class="dropdown" id="user-dropdown">
         <div onclick="toggleDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -141,10 +259,20 @@ function renderNavActions() {
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1Z"/></svg>
             Your files
           </div>
+          <div class="dropdown-item" onclick="navigate('inbox');closeDropdown()">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M0 4.75C0 3.784.784 3 1.75 3h12.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25ZM8 9.5l-4.5-3h9Z"/></svg>
+            Inbox
+          </div>
           <div class="dropdown-item" onclick="navigate('upload');closeDropdown()">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Zm-6 9.5a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"/></svg>
             Upload file
           </div>
+          ${state.user.username === ADMIN_USER ? `
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-item" onclick="navigate('admin');closeDropdown()" style="color:var(--warning);">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z"/></svg>
+            Admin Panel
+          </div>` : ''}
           <div class="dropdown-divider"></div>
           <div class="dropdown-item danger" onclick="logout()">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M2 2.75C2 1.784 2.784 1 3.75 1h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 2 13.25Zm10.44 4.5-1.97-1.97a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.97-1.97H6.75a.75.75 0 0 1 0-1.5Z"/></svg>
@@ -153,6 +281,7 @@ function renderNavActions() {
         </div>
       </div>
     `;
+    updateInboxBadge();
   } else {
     el.innerHTML = `
       <button class="btn btn-ghost btn-sm" onclick="openAuthModal('login')">Sign in</button>
@@ -161,15 +290,9 @@ function renderNavActions() {
   }
 }
 
-function toggleDropdown() {
-  document.getElementById('user-dropdown-menu')?.classList.toggle('hidden');
-}
-function closeDropdown() {
-  document.getElementById('user-dropdown-menu')?.classList.add('hidden');
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#user-dropdown')) closeDropdown();
-});
+function toggleDropdown() { document.getElementById('user-dropdown-menu')?.classList.toggle('hidden'); }
+function closeDropdown() { document.getElementById('user-dropdown-menu')?.classList.add('hidden'); }
+document.addEventListener('click', e => { if (!e.target.closest('#user-dropdown')) closeDropdown(); });
 
 // ── Navigation ────────────────────────────────────────────────────────────────
 function navigate(view) {
@@ -179,25 +302,21 @@ function navigate(view) {
   });
   const main = document.getElementById('main-content');
   switch (view) {
-    case 'home': renderHome(main); break;
-    case 'explore': renderExplore(main); break;
+    case 'home':     renderHome(main); break;
+    case 'explore':  renderExplore(main); break;
     case 'my-files': renderMyFiles(main); break;
-    case 'upload': renderUpload(main); break;
-    default: renderHome(main);
+    case 'upload':   renderUpload(main); break;
+    case 'inbox':    renderInbox(main); break;
+    case 'admin':    renderAdmin(main); break;
+    default:         renderHome(main);
   }
 }
 
 // ── Views ─────────────────────────────────────────────────────────────────────
 async function renderHome(el) {
-  el.innerHTML = `
-    ${state.user ? renderDashboard() : renderLanding()}
-  `;
-  if (state.user) {
-    loadStats();
-    loadRecentFiles('recent-files-list', state.user.username);
-  } else {
-    loadExploreFiles('featured-files', 6);
-  }
+  el.innerHTML = state.user ? renderDashboard() : renderLanding();
+  if (state.user) { loadStats(); loadRecentFiles('recent-files-list'); }
+  else { loadExploreFiles('featured-files', 6); loadPlatformStats(); }
 }
 
 function renderLanding() {
@@ -207,7 +326,7 @@ function renderLanding() {
         <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8 .25a7.75 7.75 0 1 0 0 15.5A7.75 7.75 0 0 0 8 .25Z"/></svg>
         Open file sharing platform
       </div>
-      <h1>Share files with the anyone</h1>
+      <h1>Share files with anyone</h1>
       <p>Delta is a file sharing platform built with GitHub. Upload, manage, and share files with a user friendly interface.</p>
       <div class="hero-actions">
         <button class="btn btn-primary" onclick="openAuthModal('register')">
@@ -217,19 +336,12 @@ function renderLanding() {
         <button class="btn btn-secondary" onclick="navigate('explore')">Browse files</button>
       </div>
     </div>
-
     <div class="stats-grid" id="platform-stats">
       ${['📁','👤','⬆️'].map(i=>`<div class="stat-card"><div class="stat-icon">${i}</div><div class="skeleton" style="height:32px;width:80px;margin-bottom:4px;border-radius:4px;"></div><div class="skeleton" style="height:14px;width:120px;border-radius:4px;"></div></div>`).join('')}
     </div>
-
     <div class="section-header"><h2>Featured files</h2><button class="btn btn-ghost btn-sm" onclick="navigate('explore')">Browse all →</button></div>
-    <div class="card">
-      <div id="featured-files" class="file-list">
-        ${skeletonRows(5)}
-      </div>
-    </div>
+    <div class="card"><div id="featured-files" class="file-list">${skeletonRows(5)}</div></div>
   `;
-  loadPlatformStats();
 }
 
 function renderDashboard() {
@@ -241,23 +353,17 @@ function renderDashboard() {
         <p style="color:var(--text-secondary);font-size:13px;">Here's what's happening with your files.</p>
       </div>
     </div>
-
-    <div class="stats-grid" id="user-stats">
-      ${skeletonStats(3)}
-    </div>
-
+    <div class="stats-grid" id="user-stats">${skeletonStats(3)}</div>
     <div class="section-header" style="margin-top:8px;">
       <h2>Your recent files</h2>
       <button class="btn btn-ghost btn-sm" onclick="navigate('my-files')">View all →</button>
     </div>
-    <div class="card">
-      <div id="recent-files-list" class="file-list">${skeletonRows(3)}</div>
-    </div>
-
+    <div class="card"><div id="recent-files-list" class="file-list">${skeletonRows(3)}</div></div>
     <div class="section-header" style="margin-top:24px;"><h2>Quick actions</h2></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
       ${quickAction('📤','Upload a file','Share something new','navigate(\'upload\')')}
       ${quickAction('🔍','Explore files','See what others shared','navigate(\'explore\')')}
+      ${quickAction('✉️','Inbox','Check your messages','navigate(\'inbox\')')}
       ${quickAction('👤','Edit profile','Update your info','openProfileModal()')}
     </div>
   `;
@@ -265,7 +371,9 @@ function renderDashboard() {
 
 function quickAction(icon, title, desc, onclick) {
   return `
-    <div class="card" style="cursor:pointer;transition:border-color .15s,transform .15s;" onclick="${onclick}" onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='';this.style.transform=''">
+    <div class="card" style="cursor:pointer;transition:border-color .15s,transform .15s;" onclick="${onclick}"
+      onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)'"
+      onmouseout="this.style.borderColor='';this.style.transform=''">
       <div class="card-body" style="display:flex;align-items:flex-start;gap:12px;">
         <div style="font-size:24px;">${icon}</div>
         <div>
@@ -315,17 +423,7 @@ async function renderExplore(el) {
 }
 
 async function renderMyFiles(el) {
-  if (!state.user) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">🔒</div>
-        <h3>Sign in required</h3>
-        <p>Please sign in to view your files.</p>
-        <button class="btn btn-primary" onclick="openAuthModal('login')">Sign in</button>
-      </div>
-    `;
-    return;
-  }
+  if (!state.user) { el.innerHTML = requireSignIn(); return; }
   el.innerHTML = `
     <div class="breadcrumb">
       <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
@@ -339,25 +437,13 @@ async function renderMyFiles(el) {
         Upload new
       </button>
     </div>
-    <div class="card">
-      <div id="my-files-list" class="file-list">${skeletonRows(4)}</div>
-    </div>
+    <div class="card"><div id="my-files-list" class="file-list">${skeletonRows(4)}</div></div>
   `;
-  loadRecentFiles('my-files-list', state.user.username, true);
+  loadRecentFiles('my-files-list', true);
 }
 
 async function renderUpload(el) {
-  if (!state.user) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">🔒</div>
-        <h3>Sign in required</h3>
-        <p>Please sign in to upload files.</p>
-        <button class="btn btn-primary" onclick="openAuthModal('login')">Sign in</button>
-      </div>
-    `;
-    return;
-  }
+  if (!state.user) { el.innerHTML = requireSignIn(); return; }
   el.innerHTML = `
     <div class="breadcrumb">
       <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
@@ -372,9 +458,7 @@ async function renderUpload(el) {
         <h3>Drop files here or click to browse</h3>
         <p>Supports any file type · Max 50 MB</p>
       </div>
-
       <div id="upload-file-preview" class="hidden" style="margin-top:16px;"></div>
-
       <div id="upload-form-fields" class="hidden upload-form" style="margin-top:20px;">
         <div class="form-group">
           <label>Description <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
@@ -396,24 +480,289 @@ async function renderUpload(el) {
   `;
 }
 
+// ── Inbox View ────────────────────────────────────────────────────────────────
+async function renderInbox(el) {
+  if (!state.user) { el.innerHTML = requireSignIn(); return; }
+  el.innerHTML = `
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item active">Inbox</span>
+    </div>
+    <div class="section-header">
+      <div><h2>Inbox</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Your messages</p></div>
+      <button class="btn btn-primary btn-sm" onclick="openComposeModal()">
+        <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Z"/></svg>
+        Compose
+      </button>
+    </div>
+    <div class="card" id="inbox-list"><div style="padding:20px;">${skeletonRows(3)}</div></div>
+  `;
+  loadInbox();
+}
+
+async function loadInbox() {
+  try {
+    const res = await api('GET', '/messages');
+    const el = document.getElementById('inbox-list');
+    if (!el) return;
+
+    if (res.conversations.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✉️</div><h3>No messages yet</h3><p>Your inbox is empty.</p><button class="btn btn-primary" onclick="openComposeModal()">Send a message</button></div>`;
+      return;
+    }
+
+    el.innerHTML = res.conversations.map(conv => {
+      const isSystem = conv.with === 'delta-system';
+      const avatar = isSystem
+        ? `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent-bg);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">Δ</div>`
+        : `<img src="${getAvatar(conv.with)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`;
+      const unreadDot = conv.unreadCount > 0
+        ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:6px;flex-shrink:0;"></span>`
+        : '';
+      const preview = conv.lastMessage?.body?.slice(0, 80) || '';
+      const timeStr = timeAgo(conv.lastMessage?.sentAt);
+
+      return `
+        <div class="file-item" onclick="openConversation('${escapeHtml(conv.with)}')" style="grid-template-columns:44px 1fr auto;">
+          ${avatar}
+          <div style="min-width:0;">
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="font-weight:${conv.unreadCount > 0 ? '700' : '500'};font-size:13px;">${isSystem ? 'Delta System' : escapeHtml(conv.with)}</span>
+              ${unreadDot}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(preview)}</div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);flex-shrink:0;">${timeStr}</div>
+        </div>
+      `;
+    }).join('');
+
+    state.unreadCount = res.conversations.reduce((a, c) => a + c.unreadCount, 0);
+    updateInboxBadge();
+  } catch (e) {
+    const el = document.getElementById('inbox-list');
+    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Could not load inbox</h3><p>${e.message}</p></div>`;
+  }
+}
+
+function openConversation(withUser) {
+  const main = document.getElementById('main-content');
+  const isSystem = withUser === 'delta-system';
+  main.innerHTML = `
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item" onclick="navigate('inbox')">Inbox</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item active">${isSystem ? 'Delta System' : escapeHtml(withUser)}</span>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header" style="gap:10px;">
+        ${isSystem
+          ? `<div style="width:32px;height:32px;border-radius:50%;background:var(--accent-bg);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;">Δ</div>`
+          : `<img src="${getAvatar(withUser)}" style="width:32px;height:32px;border-radius:50%;" />`
+        }
+        <h3>${isSystem ? 'Delta System' : escapeHtml(withUser)}</h3>
+        ${!isSystem ? `<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteConversation('${escapeHtml(withUser)}')">Delete</button>` : ''}
+      </div>
+      <div id="conv-messages" style="padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px;max-height:480px;overflow-y:auto;">
+        ${skeletonRows(3)}
+      </div>
+    </div>
+    ${!isSystem ? `
+    <div class="card">
+      <div class="card-body" style="display:flex;gap:8px;align-items:flex-end;">
+        <textarea id="reply-input" placeholder="Write a message…" rows="2" style="flex:1;resize:none;"></textarea>
+        <button class="btn btn-primary" onclick="sendReply('${escapeHtml(withUser)}')">Send</button>
+      </div>
+    </div>` : ''}
+  `;
+  loadConversation(withUser);
+}
+
+async function loadConversation(withUser) {
+  try {
+    const res = await api('GET', `/messages/${encodeURIComponent(withUser)}`);
+    const el = document.getElementById('conv-messages');
+    if (!el) return;
+
+    const me = state.user.username;
+    if (res.messages.length === 0) {
+      el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No messages yet. Say hello!</div>`;
+      return;
+    }
+
+    el.innerHTML = res.messages.map(msg => {
+      const isMine = msg.from === me;
+      const isSystem = msg.from === 'delta-system';
+      const formattedBody = escapeHtml(msg.body).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+
+      if (isSystem) {
+        return `
+          <div style="background:var(--accent-bg);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;margin:4px 0;">
+            ${msg.subject ? `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escapeHtml(msg.subject)}</div>` : ''}
+            <div style="font-size:13px;color:var(--text-primary);">${formattedBody}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">${timeAgo(msg.sentAt)}</div>
+          </div>
+        `;
+      }
+
+      return `
+        <div style="display:flex;flex-direction:column;align-items:${isMine ? 'flex-end' : 'flex-start'};">
+          <div style="max-width:75%;background:${isMine ? 'var(--accent)' : 'var(--bg-tertiary)'};color:${isMine ? '#fff' : 'var(--text-primary)'};border-radius:${isMine ? '12px 12px 4px 12px' : '12px 12px 12px 4px'};padding:10px 14px;font-size:13px;">
+            ${formattedBody}
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${timeAgo(msg.sentAt)}</div>
+        </div>
+      `;
+    }).join('');
+
+    // Scroll to bottom
+    el.scrollTop = el.scrollHeight;
+
+    // Update unread count
+    refreshUnreadCount();
+  } catch (e) {
+    const el = document.getElementById('conv-messages');
+    if (el) el.innerHTML = `<div style="color:var(--danger);padding:20px;text-align:center;">${e.message}</div>`;
+  }
+}
+
+async function sendReply(toUser) {
+  const input = document.getElementById('reply-input');
+  const body = input?.value?.trim();
+  if (!body) return;
+  input.value = '';
+  try {
+    await api('POST', '/messages/send', { to: toUser, body });
+    loadConversation(toUser);
+  } catch (e) {
+    toast(e.message || 'Could not send message', 'error');
+  }
+}
+
+async function deleteConversation(withUser) {
+  if (!confirm(`Delete conversation with ${withUser}?`)) return;
+  try {
+    await api('DELETE', `/messages/${encodeURIComponent(withUser)}`);
+    toast('Conversation deleted', 'info');
+    navigate('inbox');
+  } catch (e) { toast(e.message || 'Could not delete', 'error'); }
+}
+
+// Compose Modal
+function openComposeModal() {
+  document.getElementById('compose-modal').classList.remove('hidden');
+  document.getElementById('compose-to').focus();
+}
+function closeComposeModal() {
+  document.getElementById('compose-modal').classList.add('hidden');
+  document.getElementById('compose-to').value = '';
+  document.getElementById('compose-body').value = '';
+}
+
+async function sendCompose() {
+  const to = document.getElementById('compose-to').value.trim();
+  const body = document.getElementById('compose-body').value.trim();
+  if (!to || !body) { toast('Please fill in all fields', 'error'); return; }
+  const btn = document.getElementById('compose-send-btn');
+  setLoading(btn, true);
+  try {
+    await api('POST', '/messages/send', { to, body });
+    closeComposeModal();
+    toast(`Message sent to ${to}!`, 'success');
+    if (state.currentView === 'inbox') navigate('inbox');
+  } catch (e) {
+    toast(e.message || 'Could not send', 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+// ── Admin View ────────────────────────────────────────────────────────────────
+async function renderAdmin(el) {
+  if (!state.user || state.user.username !== ADMIN_USER) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Access denied</h3></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="breadcrumb">
+      <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item active">Admin Panel</span>
+    </div>
+    <div class="section-header">
+      <div><h2>Admin Panel</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Manage pending account approvals</p></div>
+    </div>
+    <div class="card" id="pending-list"><div style="padding:20px;">${skeletonRows(2)}</div></div>
+  `;
+  loadPendingAccounts();
+}
+
+async function loadPendingAccounts() {
+  try {
+    const res = await api('GET', '/admin/pending');
+    const el = document.getElementById('pending-list');
+    if (!el) return;
+
+    if (res.pending.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>No pending approvals</h3><p>All accounts are up to date.</p></div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="card-header"><h3>Pending accounts (${res.pending.length})</h3></div>
+      ${res.pending.map(u => `
+        <div class="file-item" style="grid-template-columns:44px 1fr auto;">
+          <img src="${escapeHtml(u.avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
+          <div>
+            <div style="font-weight:600;font-size:13px;">${escapeHtml(u.username)}</div>
+            <div style="font-size:12px;color:var(--text-muted);">Requested ${timeAgo(u.createdAt)}</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary btn-sm" onclick="approveAccount('${escapeHtml(u.username)}')">✓ Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="denyAccount('${escapeHtml(u.username)}')">✗ Deny</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch (e) {
+    const el = document.getElementById('pending-list');
+    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Could not load</h3><p>${e.message}</p></div>`;
+  }
+}
+
+async function approveAccount(username) {
+  try {
+    await api('POST', `/admin/approve/${encodeURIComponent(username)}`);
+    toast(`${username} approved! They can now sign in.`, 'success');
+    loadPendingAccounts();
+  } catch (e) { toast(e.message || 'Could not approve', 'error'); }
+}
+
+async function denyAccount(username) {
+  if (!confirm(`Deny account for ${username}? This cannot be undone.`)) return;
+  try {
+    await api('POST', `/admin/deny/${encodeURIComponent(username)}`);
+    toast(`${username} denied.`, 'info');
+    loadPendingAccounts();
+  } catch (e) { toast(e.message || 'Could not deny', 'error'); }
+}
+
 // ── File Loading ──────────────────────────────────────────────────────────────
 async function loadExploreFiles(containerId, limit = 50) {
   try {
     const res = await api('GET', '/files');
     state.files = res.files || [];
-    let filtered = filterFiles(state.files);
-    filtered = sortFiles(filtered);
-    filtered = filtered.slice(0, limit);
-
+    let filtered = sortFiles(filterFiles(state.files)).slice(0, limit);
     const container = document.getElementById(containerId);
     if (!container) return;
-
     if (filtered.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No files yet</h3><p>Be the first to share a file!</p><button class="btn btn-primary" onclick="navigate('upload')">Upload a file</button></div>`;
       if (containerId === 'featured-files') container.className = '';
       return;
     }
-
     if (state.viewMode === 'grid' && containerId === 'files-container') {
       container.innerHTML = filtered.map(f => renderFileCard(f)).join('');
     } else {
@@ -425,15 +774,14 @@ async function loadExploreFiles(containerId, limit = 50) {
   }
 }
 
-async function loadRecentFiles(containerId, username, showAll = false) {
+async function loadRecentFiles(containerId, showAll = false) {
   try {
     const res = await api('GET', '/files');
+    state.files = res.files || [];
     let files = res.files || [];
     if (!showAll) files = files.slice(0, 5);
-
     const container = document.getElementById(containerId);
     if (!container) return;
-
     if (files.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No files yet</h3><p>Upload your first file to get started.</p><button class="btn btn-primary" onclick="navigate('upload')">Upload a file</button></div>`;
       return;
@@ -476,21 +824,17 @@ function statCard(icon, value, label) {
 
 // ── File Rendering ────────────────────────────────────────────────────────────
 function renderFileRow(f, showDelete = false) {
-  if (f.name == ".gitkeep") {
-    return
-  }
-
+  if (f.name === '.gitkeep') return '';
   const uploader = f.uploader || 'unknown';
-
   return `
-    <div class="file-item" onclick="openPreview('${f.name}','${f.download_url}','${f.ext || ''}')">
+    <div class="file-item" onclick="openPreview('${escapeHtml(f.name)}','${escapeHtml(f.download_url)}','${f.ext || ''}')">
       <div class="file-icon">${f.icon || '📁'}</div>
       <div class="file-info">
-        <div class="file-name">${f.originalName || f.name}</div>
+        <div class="file-name">${escapeHtml(f.originalName || f.name)}</div>
         <div class="file-meta">
           <div class="file-uploader">
-            <img src="${getAvatar(uploader)}" alt="${uploader}" />
-            <span>${uploader}</span>
+            <img src="${getAvatar(uploader)}" alt="${escapeHtml(uploader)}" />
+            <span>${escapeHtml(uploader)}</span>
           </div>
           <span>·</span>
           <span>${f.formattedSize || formatBytes(f.size || 0)}</span>
@@ -499,13 +843,13 @@ function renderFileRow(f, showDelete = false) {
       </div>
       <div class="file-size mono">${f.formattedSize || ''}</div>
       <div class="file-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-icon btn-sm" title="Download" onclick="downloadFile('${f.name}','${f.download_url}')">
+        <button class="btn btn-ghost btn-icon btn-sm" title="Download" onclick="downloadFile('${escapeHtml(f.name)}','${escapeHtml(f.download_url)}')">
           <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Zm-1-5.573 3.25 3.25a.75.75 0 0 0 1.06 0L9.31 8.427A.75.75 0 0 0 8.25 7.5H6.25a.75.75 0 0 0-.75.75v.677Z"/></svg>
         </button>
-        <button class="btn btn-ghost btn-icon btn-sm" title="Copy link" onclick="copyLink('${f.download_url}')">
+        <button class="btn btn-ghost btn-icon btn-sm" title="Copy link" onclick="copyLink('${escapeHtml(f.download_url)}')">
           <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="m7.775 3.275 1.25-1.25a3.5 3.5 0 1 1 4.95 4.95l-2.5 2.5a3.5 3.5 0 0 1-4.95 0 .751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018 2 2 0 0 0 2.83 0l2.5-2.5a2.002 2.002 0 0 0-2.83-2.83l-1.25 1.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042Zm-4.69 9.64a2.002 2.002 0 0 0 2.83 0l1.25-1.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042l-1.25 1.25a3.5 3.5 0 1 1-4.95-4.95l2.5-2.5a3.5 3.5 0 0 1 4.95 0 .751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018 2 2 0 0 0-2.83 0l-2.5 2.5a2.002 2.002 0 0 0 0 2.83Z"/></svg>
         </button>
-        ${showDelete && state.user ? `<button class="btn btn-ghost btn-icon btn-sm" title="Delete" style="color:var(--danger)" onclick="deleteFile('${f.name}')">
+        ${showDelete && state.user ? `<button class="btn btn-ghost btn-icon btn-sm" title="Delete" style="color:var(--danger)" onclick="deleteFile('${escapeHtml(f.name)}')">
           <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.49.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.74-1.575l-.66-6.6a.75.75 0 1 1 1.49-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"/></svg>
         </button>` : ''}
       </div>
@@ -514,20 +858,20 @@ function renderFileRow(f, showDelete = false) {
 }
 
 function renderFileCard(f) {
+  if (f.name === '.gitkeep') return '';
   const uploader = f.uploader || 'unknown';
   const isImage = ['png','jpg','jpeg','gif','webp','svg'].includes(f.ext || '');
-
   return `
-    <div class="file-card" onclick="openPreview('${f.name}','${f.download_url}','${f.ext || ''}')">
+    <div class="file-card" onclick="openPreview('${escapeHtml(f.name)}','${escapeHtml(f.download_url)}','${f.ext || ''}')">
       <div class="file-card-preview">
-        ${isImage && f.download_url ? `<img src="${f.download_url}" alt="${f.name}" onerror="this.parentElement.innerHTML='${f.icon || '📁'}'" />` : (f.icon || '📁')}
+        ${isImage && f.download_url ? `<img src="${escapeHtml(f.download_url)}" alt="${escapeHtml(f.name)}" onerror="this.parentElement.innerHTML='${f.icon || '📁'}'" />` : (f.icon || '📁')}
       </div>
       <div class="file-card-body">
-        <div class="file-card-name" title="${f.originalName || f.name}">${f.originalName || f.name}</div>
+        <div class="file-card-name" title="${escapeHtml(f.originalName || f.name)}">${escapeHtml(f.originalName || f.name)}</div>
         <div class="file-card-meta">
           <div class="file-card-uploader">
-            <img src="${getAvatar(uploader)}" alt="${uploader}" />
-            <span>${uploader}</span>
+            <img src="${getAvatar(uploader)}" alt="${escapeHtml(uploader)}" />
+            <span>${escapeHtml(uploader)}</span>
           </div>
           <span>·</span>
           <span class="mono">${f.formattedSize || formatBytes(f.size || 0)}</span>
@@ -542,7 +886,6 @@ function openPreview(name, url, ext) {
   const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
   const isPdf = ext === 'pdf';
   const isText = ['txt','md','json','js','ts','html','css','py','rs','go','java','cpp','c','yaml','yml','toml','xml'].includes(ext);
-
   document.getElementById('preview-modal').classList.remove('hidden');
   const content = document.getElementById('preview-modal-content');
   content.innerHTML = `
@@ -574,7 +917,7 @@ function openPreview(name, url, ext) {
 function closePreviewModal() { document.getElementById('preview-modal').classList.add('hidden'); }
 
 async function downloadFile(name, url) {
-  if (url) { window.open(url, '_blank'); }
+  if (url) window.open(url, '_blank');
   else {
     try {
       const res = await api('GET', `/files/${name}/download`);
@@ -596,16 +939,11 @@ async function deleteFile(name) {
     await api('DELETE', `/files/${name}`);
     toast('File deleted successfully', 'success');
     navigate(state.currentView);
-  } catch (e) {
-    toast(e.message || 'Could not delete file', 'error');
-  }
+  } catch (e) { toast(e.message || 'Could not delete file', 'error'); }
 }
 
 // ── Upload ────────────────────────────────────────────────────────────────────
-function handleFileSelect(e) {
-  const file = e.target.files[0];
-  if (file) setUploadFile(file);
-}
+function handleFileSelect(e) { const file = e.target.files[0]; if (file) setUploadFile(file); }
 function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
 function handleDragLeave() { document.getElementById('upload-zone').classList.remove('drag-over'); }
 function handleDrop(e) {
@@ -649,21 +987,17 @@ async function handleUpload() {
   const progressEl = document.getElementById('upload-progress');
   const statusEl = document.getElementById('upload-status');
   const fillEl = document.getElementById('progress-fill');
-
   setLoading(btn, true);
   progressEl.classList.remove('hidden');
-
   let prog = 0;
   const interval = setInterval(() => {
     prog = Math.min(prog + Math.random() * 15, 90);
     fillEl.style.width = prog + '%';
   }, 200);
-
   try {
     const formData = new FormData();
     formData.append('file', state.uploadFile);
     formData.append('description', document.getElementById('upload-desc').value);
-
     const res = await fetch(`${API}/files/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${state.token}` },
@@ -671,18 +1005,15 @@ async function handleUpload() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Upload failed');
-
     clearInterval(interval);
     fillEl.style.width = '100%';
     statusEl.textContent = 'Upload complete! ✓';
-
     if (state.user) {
       state.user.uploads = (state.user.uploads || 0) + 1;
       state.user.totalSize = (state.user.totalSize || 0) + state.uploadFile.size;
       localStorage.setItem('delta_user', JSON.stringify(state.user));
     }
-
-    toast(`File uploaded successfully! 🎉`, 'success');
+    toast('File uploaded successfully! 🎉', 'success');
     setTimeout(() => navigate('my-files'), 1000);
   } catch (e) {
     clearInterval(interval);
@@ -709,7 +1040,6 @@ function renderProfileModalContent() {
     <div class="profile-header">
       <div class="profile-avatar-wrap">
         <img src="${user.avatar}" class="profile-avatar" id="profile-avatar-img" />
-        <!-- Avatar edit button opens sub-menu -->
         <div class="profile-avatar-edit" onclick="toggleAvatarPanel()" title="Change avatar">
           <svg viewBox="0 0 16 16" width="12" height="12" fill="white"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Z"/></svg>
         </div>
@@ -727,9 +1057,7 @@ function renderProfileModalContent() {
       </div>
     </div>
 
-    <!-- ── Avatar Panel ─────────────────────────────────────────────────── -->
     <div id="avatar-panel" class="hidden" style="border-bottom:1px solid var(--border);background:var(--bg-tertiary);">
-      <!-- Tab bar -->
       <div style="display:flex;border-bottom:1px solid var(--border);">
         <div class="avatar-tab active" id="tab-upload" onclick="switchAvatarTab('upload')"
           style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);">
@@ -740,8 +1068,6 @@ function renderProfileModalContent() {
           🎨 Generated
         </div>
       </div>
-
-      <!-- Upload tab -->
       <div id="avatar-tab-upload" style="padding:16px;">
         <div id="avatar-upload-zone"
           style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;"
@@ -769,12 +1095,10 @@ function renderProfileModalContent() {
           </button>
         </div>
         <div id="avatar-upload-progress" class="hidden" style="margin-top:10px;">
-          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px);">Uploading avatar…</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Uploading avatar…</div>
           <div class="progress-bar"><div class="progress-fill" id="avatar-progress-fill" style="width:0%"></div></div>
         </div>
       </div>
-
-      <!-- Generated tab -->
       <div id="avatar-tab-generated" class="hidden" style="padding:16px;">
         <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Choose a style</div>
         <div class="avatar-picker" id="profile-avatar-picker-generated">
@@ -815,77 +1139,34 @@ function renderProfileModalContent() {
   `;
 }
 
-// ── Avatar panel helpers ──────────────────────────────────────────────────────
-function toggleAvatarPanel() {
-  const panel = document.getElementById('avatar-panel');
-  panel.classList.toggle('hidden');
-}
+function toggleAvatarPanel() { document.getElementById('avatar-panel').classList.toggle('hidden'); }
 
 function switchAvatarTab(tab) {
-  const uploadTab = document.getElementById('avatar-tab-upload');
-  const generatedTab = document.getElementById('avatar-tab-generated');
-  const tabUpload = document.getElementById('tab-upload');
-  const tabGenerated = document.getElementById('tab-generated');
-
-  if (tab === 'upload') {
-    uploadTab.classList.remove('hidden');
-    generatedTab.classList.add('hidden');
-    tabUpload.style.borderBottomColor = 'var(--accent)';
-    tabUpload.style.color = 'var(--text-primary)';
-    tabGenerated.style.borderBottomColor = 'transparent';
-    tabGenerated.style.color = 'var(--text-secondary)';
-  } else {
-    uploadTab.classList.add('hidden');
-    generatedTab.classList.remove('hidden');
-    tabGenerated.style.borderBottomColor = 'var(--accent)';
-    tabGenerated.style.color = 'var(--text-primary)';
-    tabUpload.style.borderBottomColor = 'transparent';
-    tabUpload.style.color = 'var(--text-secondary)';
-  }
+  const isUpload = tab === 'upload';
+  document.getElementById('avatar-tab-upload').classList.toggle('hidden', !isUpload);
+  document.getElementById('avatar-tab-generated').classList.toggle('hidden', isUpload);
+  document.getElementById('tab-upload').style.borderBottomColor = isUpload ? 'var(--accent)' : 'transparent';
+  document.getElementById('tab-upload').style.color = isUpload ? 'var(--text-primary)' : 'var(--text-secondary)';
+  document.getElementById('tab-generated').style.borderBottomColor = !isUpload ? 'var(--accent)' : 'transparent';
+  document.getElementById('tab-generated').style.color = !isUpload ? 'var(--text-primary)' : 'var(--text-secondary)';
 }
 
-function avatarDragOver(e) {
-  e.preventDefault();
-  document.getElementById('avatar-upload-zone').style.borderColor = 'var(--accent)';
-  document.getElementById('avatar-upload-zone').style.background = 'var(--accent-bg)';
-}
-function avatarDragLeave() {
-  document.getElementById('avatar-upload-zone').style.borderColor = '';
-  document.getElementById('avatar-upload-zone').style.background = '';
-}
-function avatarDrop(e) {
-  e.preventDefault();
-  avatarDragLeave();
-  const file = e.dataTransfer.files[0];
-  if (file) processAvatarFile(file);
-}
-
-function handleAvatarFileSelect(e) {
-  const file = e.target.files[0];
-  if (file) processAvatarFile(file);
-}
+function avatarDragOver(e) { e.preventDefault(); document.getElementById('avatar-upload-zone').style.borderColor = 'var(--accent)'; document.getElementById('avatar-upload-zone').style.background = 'var(--accent-bg)'; }
+function avatarDragLeave() { document.getElementById('avatar-upload-zone').style.borderColor = ''; document.getElementById('avatar-upload-zone').style.background = ''; }
+function avatarDrop(e) { e.preventDefault(); avatarDragLeave(); const file = e.dataTransfer.files[0]; if (file) processAvatarFile(file); }
+function handleAvatarFileSelect(e) { const file = e.target.files[0]; if (file) processAvatarFile(file); }
 
 function processAvatarFile(file) {
   const allowed = ['image/jpeg','image/png','image/gif','image/webp'];
-  if (!allowed.includes(file.type)) {
-    toast('Please select a JPEG, PNG, GIF, or WebP image', 'error');
-    return;
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    toast('Image must be under 5 MB', 'error');
-    return;
-  }
-
+  if (!allowed.includes(file.type)) { toast('Please select a JPEG, PNG, GIF, or WebP image', 'error'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast('Image must be under 5 MB', 'error'); return; }
   state._pendingAvatarFile = file;
-
-  // Show preview
   const reader = new FileReader();
   reader.onload = (e) => {
     document.getElementById('avatar-preview-img').src = e.target.result;
-    document.getElementById('profile-avatar-img').src = e.target.result; // live preview
+    document.getElementById('profile-avatar-img').src = e.target.result;
   };
   reader.readAsDataURL(file);
-
   document.getElementById('avatar-preview-name').textContent = file.name;
   document.getElementById('avatar-preview-size').textContent = formatBytes(file.size);
   document.getElementById('avatar-upload-preview').classList.remove('hidden');
@@ -905,48 +1186,28 @@ async function uploadCustomAvatar() {
   const btn = document.getElementById('avatar-upload-btn');
   const progressEl = document.getElementById('avatar-upload-progress');
   const fillEl = document.getElementById('avatar-progress-fill');
-
-  btn.disabled = true;
-  btn.textContent = 'Uploading…';
+  btn.disabled = true; btn.textContent = 'Uploading…';
   progressEl.classList.remove('hidden');
-
   let prog = 0;
-  const interval = setInterval(() => {
-    prog = Math.min(prog + Math.random() * 20, 85);
-    fillEl.style.width = prog + '%';
-  }, 150);
-
+  const interval = setInterval(() => { prog = Math.min(prog + Math.random() * 20, 85); fillEl.style.width = prog + '%'; }, 150);
   try {
     const formData = new FormData();
     formData.append('avatar', state._pendingAvatarFile);
-
-    const res = await fetch(`${API}/auth/avatar`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${state.token}` },
-      body: formData,
-    });
+    const res = await fetch(`${API}/auth/avatar`, { method: 'POST', headers: { 'Authorization': `Bearer ${state.token}` }, body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Upload failed');
-
-    clearInterval(interval);
-    fillEl.style.width = '100%';
-
+    clearInterval(interval); fillEl.style.width = '100%';
     state.user = data.user;
     localStorage.setItem('delta_user', JSON.stringify(data.user));
     state._pendingAvatarFile = null;
-
     renderNavActions();
     toast('Profile picture updated! ✓', 'success');
-
-    // Re-render profile modal with new avatar
     setTimeout(() => renderProfileModalContent(), 400);
   } catch (e) {
     clearInterval(interval);
     toast(e.message || 'Avatar upload failed', 'error');
-    btn.disabled = false;
-    btn.textContent = 'Set as profile picture';
-    progressEl.classList.add('hidden');
-    fillEl.style.width = '0%';
+    btn.disabled = false; btn.textContent = 'Set as profile picture';
+    progressEl.classList.add('hidden'); fillEl.style.width = '0%';
   }
 }
 
@@ -954,7 +1215,7 @@ function selectProfileAvatar(url, el) {
   document.querySelectorAll('#profile-avatar-picker-generated .avatar-option').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
   state._pendingAvatar = url;
-  document.getElementById('profile-avatar-img').src = url; // live preview
+  document.getElementById('profile-avatar-img').src = url;
   const applyBtn = document.getElementById('apply-generated-btn');
   if (applyBtn) applyBtn.disabled = false;
 }
@@ -962,8 +1223,7 @@ function selectProfileAvatar(url, el) {
 async function applyGeneratedAvatar() {
   if (!state._pendingAvatar) return;
   const btn = document.getElementById('apply-generated-btn');
-  btn.disabled = true;
-  btn.textContent = 'Applying…';
+  btn.disabled = true; btn.textContent = 'Applying…';
   try {
     const res = await api('PATCH', '/auth/profile', { avatar: state._pendingAvatar });
     state.user = res.user;
@@ -974,8 +1234,7 @@ async function applyGeneratedAvatar() {
     setTimeout(() => renderProfileModalContent(), 200);
   } catch (e) {
     toast(e.message || 'Could not update avatar', 'error');
-    btn.disabled = false;
-    btn.textContent = 'Apply selected avatar';
+    btn.disabled = false; btn.textContent = 'Apply selected avatar';
   }
 }
 
@@ -989,26 +1248,15 @@ async function saveProfile() {
     renderNavActions();
     closeProfileModal();
     toast('Profile updated! ✓', 'success');
-  } catch (e) {
-    toast(e.message || 'Could not save profile', 'error');
-  }
+  } catch (e) { toast(e.message || 'Could not save profile', 'error'); }
 }
 
 function closeProfileModal() { document.getElementById('profile-modal').classList.add('hidden'); }
 
 // ── Filters ───────────────────────────────────────────────────────────────────
-function setFilter(f) {
-  state.currentFilter = f;
-  navigate('explore');
-}
-function setSort(s) {
-  state.currentSort = s;
-  navigate('explore');
-}
-function setViewMode(m) {
-  state.viewMode = m;
-  navigate('explore');
-}
+function setFilter(f) { state.currentFilter = f; navigate('explore'); }
+function setSort(s) { state.currentSort = s; navigate('explore'); }
+function setViewMode(m) { state.viewMode = m; navigate('explore'); }
 
 function filterFiles(files) {
   if (state.currentFilter === 'all') return files;
@@ -1052,18 +1300,17 @@ function updateCmdResults(query) {
     { icon: '🔍', name: 'Explore', meta: 'Browse all files', action: () => navigate('explore') },
     { icon: '📁', name: 'My Files', meta: 'View your files', action: () => navigate('my-files') },
     { icon: '📤', name: 'Upload', meta: 'Share a file', action: () => navigate('upload') },
+    { icon: '✉️', name: 'Inbox', meta: 'Your messages', action: () => navigate('inbox') },
     { icon: '👤', name: 'Profile', meta: 'Edit your profile', action: () => openProfileModal() },
   ];
-
   const filtered = query ? pages.filter(p => p.name.toLowerCase().includes(query.toLowerCase())) : pages;
   state.cmdItems = filtered;
   state.cmdSelected = 0;
-
-  const fileItems = state.files.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
-
+  const fileItems = state.files
+    .filter(f => f.name !== '.gitkeep' && (f.originalName || f.name).toLowerCase().includes(query.toLowerCase()))
+    .slice(0, 5);
   const el = document.getElementById('cmd-results');
   let html = '';
-
   if (filtered.length) {
     html += `<div class="cmd-section">Navigation</div>`;
     html += filtered.map((p, i) => `
@@ -1076,23 +1323,20 @@ function updateCmdResults(query) {
       </div>
     `).join('');
   }
-
   if (fileItems.length) {
     html += `<div class="cmd-section">Files</div>`;
     html += fileItems.map(f => `
-      <div class="cmd-item" onclick="openPreview('${f.name}','${f.download_url}','${f.ext||''}');closeCommandPalette()">
+      <div class="cmd-item" onclick="openPreview('${escapeHtml(f.name)}','${escapeHtml(f.download_url)}','${f.ext||''}');closeCommandPalette()">
         <div class="cmd-item-icon">${f.icon || '📁'}</div>
         <div class="cmd-item-info">
-          <div class="cmd-item-name">${f.originalName || f.name}</div>
+          <div class="cmd-item-name">${escapeHtml(f.originalName || f.name)}</div>
           <div class="cmd-item-meta">${f.formattedSize || ''}</div>
         </div>
       </div>
     `).join('');
   }
-
-  if (!html) html = `<div class="cmd-item" style="color:var(--text-muted);justify-content:center;">No results for "${query}"</div>`;
+  if (!html) html = `<div class="cmd-item" style="color:var(--text-muted);justify-content:center;">No results for "${escapeHtml(query)}"</div>`;
   el.innerHTML = html;
-
   filtered.forEach((p, i) => {
     const item = document.getElementById(`cmd-item-${i}`);
     if (item) item.onclick = () => { p.action(); closeCommandPalette(); };
@@ -1104,43 +1348,25 @@ function initKeyboard() {
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
-      if (document.getElementById('cmd-palette').classList.contains('hidden')) {
-        openCommandPalette();
-      } else {
-        closeCommandPalette();
-      }
+      document.getElementById('cmd-palette').classList.contains('hidden') ? openCommandPalette() : closeCommandPalette();
     }
     if (e.key === 'Escape') {
-      closeCommandPalette();
-      closePreviewModal();
-      closeAuthModal();
-      closeProfileModal();
+      closeCommandPalette(); closePreviewModal(); closeAuthModal();
+      closeProfileModal(); closeComposeModal();
     }
   });
-
-  document.getElementById('cmd-input').addEventListener('input', e => {
-    updateCmdResults(e.target.value);
-  });
-
-  document.getElementById('cmd-palette').addEventListener('click', e => {
-    if (e.target === document.getElementById('cmd-palette')) closeCommandPalette();
-  });
-  document.getElementById('auth-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('auth-modal')) closeAuthModal();
-  });
-  document.getElementById('profile-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('profile-modal')) closeProfileModal();
-  });
-  document.getElementById('preview-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('preview-modal')) closePreviewModal();
-  });
+  document.getElementById('cmd-input').addEventListener('input', e => updateCmdResults(e.target.value));
+  document.getElementById('cmd-palette').addEventListener('click', e => { if (e.target === document.getElementById('cmd-palette')) closeCommandPalette(); });
+  document.getElementById('auth-modal').addEventListener('click', e => { if (e.target === document.getElementById('auth-modal')) closeAuthModal(); });
+  document.getElementById('profile-modal').addEventListener('click', e => { if (e.target === document.getElementById('profile-modal')) closeProfileModal(); });
+  document.getElementById('preview-modal').addEventListener('click', e => { if (e.target === document.getElementById('preview-modal')) closePreviewModal(); });
+  document.getElementById('compose-modal').addEventListener('click', e => { if (e.target === document.getElementById('compose-modal')) closeComposeModal(); });
 }
 
-// ── Search ────────────────────────────────────────────────────────────────────
 function initSearch() {
-  const input = document.getElementById('search-input');
   const searchBox = document.getElementById('nav-search-box');
-  searchBox.addEventListener('click', () => { openCommandPalette(); });
+  const input = document.getElementById('search-input');
+  searchBox.addEventListener('click', () => openCommandPalette());
   input.addEventListener('focus', () => { openCommandPalette(); input.blur(); });
 }
 
@@ -1166,7 +1392,7 @@ function initPasswordStrength() {
   document.getElementById('reg-password')?.addEventListener('input', e => {
     const val = e.target.value;
     const el = document.getElementById('pass-strength');
-    if (!el || !val) { el.innerHTML = ''; return; }
+    if (!el || !val) { if (el) el.innerHTML = ''; return; }
     const strength = getPasswordStrength(val);
     const classes = ['weak','fair','fair','good','good'];
     el.innerHTML = [1,2,3,4].map(i => `<div class="strength-bar ${i <= strength ? classes[strength-1] : ''}"></div>`).join('');
@@ -1183,7 +1409,7 @@ function getPasswordStrength(p) {
   return Math.min(4, s);
 }
 
-function togglePass(id, btn) {
+function togglePass(id) {
   const input = document.getElementById(id);
   input.type = input.type === 'password' ? 'text' : 'password';
 }
@@ -1196,19 +1422,14 @@ function toast(message, type = 'info', duration = 3000) {
   t.innerHTML = `<div class="toast-dot"></div><span>${escapeHtml(message)}</span>`;
   container.appendChild(t);
   setTimeout(() => {
-    t.style.opacity = '0';
-    t.style.transform = 'translateX(20px)';
-    t.style.transition = 'all 0.25s';
+    t.style.opacity = '0'; t.style.transform = 'translateX(20px)'; t.style.transition = 'all 0.25s';
     setTimeout(() => t.remove(), 250);
   }, duration);
 }
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(`${API}${path}`, opts);
@@ -1220,19 +1441,14 @@ async function api(method, path, body) {
 // ── Theme ─────────────────────────────────────────────────────────────────────
 function toggleTheme() {
   const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  html.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   localStorage.setItem('delta_theme', html.getAttribute('data-theme'));
 }
-(() => {
-  const saved = localStorage.getItem('delta_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-})();
+(() => { document.documentElement.setAttribute('data-theme', localStorage.getItem('delta_theme') || 'dark'); })();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function getAvatar(user) {
-  return API + `/avatar/${user}`
-}
+function getAvatar(user) { return `${API}/avatar/${encodeURIComponent(user)}`; }
+function requireSignIn() { return `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Sign in required</h3><p>Please sign in to access this page.</p><button class="btn btn-primary" onclick="openAuthModal('login')">Sign in</button></div>`; }
 
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
@@ -1242,10 +1458,14 @@ function formatBytes(bytes) {
 }
 
 function timeAgo(iso) {
-  if (!iso) return 'Unknown';
+  if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days < 1) return 'Today';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
   if (days < 30) return `${days}d ago`;
   if (days < 365) return `${Math.floor(days/30)}mo ago`;
   return `${Math.floor(days/365)}y ago`;
@@ -1266,12 +1486,10 @@ function escapeHtml(s) {
 function setLoading(btn, loading) {
   if (!btn) return;
   if (loading) {
-    btn._origText = btn.innerHTML;
-    btn.disabled = true;
+    btn._origText = btn.innerHTML; btn.disabled = true;
     btn.innerHTML = `<svg class="spin" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z" opacity=".25"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5.75.75 0 0 0 1.5 0A8 8 0 0 0 8 0a.75.75 0 0 0 0 1.5Z"/></svg> Loading…`;
   } else {
-    btn.disabled = false;
-    btn.innerHTML = btn._origText || 'Submit';
+    btn.disabled = false; btn.innerHTML = btn._origText || 'Submit';
   }
 }
 
