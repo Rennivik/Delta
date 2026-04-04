@@ -1,7 +1,5 @@
-// ── Config ────────────────────────────────────────────────────────────────────
 const API = 'https://delta-server-vyed.onrender.com';
 
-// ── State ─────────────────────────────────────────────────────────────────────
 let state = {
   user: null,
   token: null,
@@ -18,10 +16,8 @@ let state = {
   searchQuery: '',
 };
 
-// ── Avatar seeds ──────────────────────────────────────────────────────────────
 const AVATAR_SEEDS = ['alpha','beta','gamma','delta','echo','foxtrot','golf','hotel','india','juliet','kilo','lima'];
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadAuth();
   renderNavActions();
@@ -32,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordStrength();
 });
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
 function loadAuth() {
   const token = localStorage.getItem('delta_token');
   const user = localStorage.getItem('delta_user');
@@ -116,7 +111,6 @@ function openAuthModal(mode = 'login') {
 }
 function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
 
-// ── Nav ───────────────────────────────────────────────────────────────────────
 function renderNavActions() {
   const el = document.getElementById('nav-actions');
   if (state.user) {
@@ -173,7 +167,6 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#user-dropdown')) closeDropdown();
 });
 
-// ── Navigation ────────────────────────────────────────────────────────────────
 function navigate(view) {
   state.currentView = view;
   document.querySelectorAll('.sidebar-item').forEach(el => {
@@ -189,7 +182,6 @@ function navigate(view) {
   }
 }
 
-// ── Views ─────────────────────────────────────────────────────────────────────
 async function renderHome(el) {
   el.innerHTML = `
     ${state.user ? renderDashboard() : renderLanding()}
@@ -405,7 +397,6 @@ async function renderUpload(el) {
   `;
 }
 
-// ── File Loading ──────────────────────────────────────────────────────────────
 async function loadExploreFiles(containerId, limit = 50) {
   try {
     const res = await api('GET', '/files');
@@ -437,10 +428,7 @@ async function loadExploreFiles(containerId, limit = 50) {
 async function loadRecentFiles(containerId, username, showAll = false) {
   try {
     const res = await api('GET', '/files');
-    let files = (res.files || []).filter(f => {
-      // In a real setup, metadata would filter by uploader
-      return true;
-    });
+    let files = res.files || [];
     if (!showAll) files = files.slice(0, 5);
 
     const container = document.getElementById(containerId);
@@ -459,7 +447,6 @@ async function loadRecentFiles(containerId, username, showAll = false) {
 
 async function loadStats() {
   try {
-    const res = await api('GET', '/stats');
     const statsEl = document.getElementById('user-stats');
     if (!statsEl) return;
     statsEl.innerHTML = `
@@ -487,7 +474,6 @@ function statCard(icon, value, label) {
   return `<div class="stat-card"><div class="stat-icon">${icon}</div><div class="stat-number">${value}</div><div class="stat-label">${label}</div></div>`;
 }
 
-// ── File Rendering ────────────────────────────────────────────────────────────
 function renderFileRow(f, showDelete = false) {
   const uploader = f.uploader || 'unknown';
   const avatarUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
@@ -547,7 +533,6 @@ function renderFileCard(f) {
   `;
 }
 
-// ── File Actions ──────────────────────────────────────────────────────────────
 function openPreview(name, url, ext) {
   const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
   const isPdf = ext === 'pdf';
@@ -611,7 +596,6 @@ async function deleteFile(name) {
   }
 }
 
-// ── Upload ────────────────────────────────────────────────────────────────────
 function handleFileSelect(e) {
   const file = e.target.files[0];
   if (file) setUploadFile(file);
@@ -668,7 +652,6 @@ async function handleUpload() {
   setLoading(btn, true);
   progressEl.classList.remove('hidden');
 
-  // Simulate progress
   let prog = 0;
   const interval = setInterval(() => {
     prog = Math.min(prog + Math.random() * 15, 90);
@@ -693,7 +676,6 @@ async function handleUpload() {
     fillEl.style.width = '100%';
     statusEl.textContent = 'Upload complete! ✓';
 
-    // Update user stats
     if (state.user) {
       state.user.uploads = (state.user.uploads || 0) + 1;
       state.user.totalSize = (state.user.totalSize || 0) + state.uploadFile.size;
@@ -712,18 +694,22 @@ async function handleUpload() {
   }
 }
 
-// ── Profile Modal ─────────────────────────────────────────────────────────────
 function openProfileModal() {
   if (!state.user) { openAuthModal('login'); return; }
   closeDropdown();
   document.getElementById('profile-modal').classList.remove('hidden');
+  renderProfileModalContent();
+}
+
+function renderProfileModalContent() {
   const content = document.getElementById('profile-modal-content');
   const user = state.user;
   content.innerHTML = `
     <div class="profile-header">
       <div class="profile-avatar-wrap">
         <img src="${user.avatar}" class="profile-avatar" id="profile-avatar-img" />
-        <div class="profile-avatar-edit" onclick="document.getElementById('profile-avatar-picker').classList.toggle('hidden')">
+        <!-- Avatar edit button opens sub-menu -->
+        <div class="profile-avatar-edit" onclick="toggleAvatarPanel()" title="Change avatar">
           <svg viewBox="0 0 16 16" width="12" height="12" fill="white"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Z"/></svg>
         </div>
       </div>
@@ -732,23 +718,77 @@ function openProfileModal() {
         <div class="profile-bio">${escapeHtml(user.bio || 'No bio yet.')}</div>
         <div class="profile-meta">
           ${user.location ? `<div class="profile-meta-item"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="m12.596 11.596-3.535 3.536a1.5 1.5 0 0 1-2.122 0l-3.535-3.536a6.5 6.5 0 1 1 9.192-9.193 6.5 6.5 0 0 1 0 9.193Zm-1.06-8.132v-.001a5 5 0 1 0-7.072 7.072L8 14.07l3.536-3.534a5 5 0 0 0 0-7.072ZM8 9a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 9Z"/></svg>${escapeHtml(user.location)}</div>` : ''}
-          <div class="profile-meta-item"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M4.75 0A1.75 1.75 0 0 0 3 1.75v12.5C3 15.216 3.784 16 4.75 16h6.5A1.75 1.75 0 0 0 13 14.25V1.75A1.75 1.75 0 0 0 11.25 0ZM4.5 1.75a.25.25 0 0 1 .25-.25h6.5a.25.25 0 0 1 .25.25v12.5a.25.25 0 0 1-.25.25h-6.5a.25.25 0 0 1-.25-.25Zm3.75 10a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z"/></svg>Member since ${new Date(user.createdAt).toLocaleDateString()}</div>
+          <div class="profile-meta-item">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M4.75 0A1.75 1.75 0 0 0 3 1.75v12.5C3 15.216 3.784 16 4.75 16h6.5A1.75 1.75 0 0 0 13 14.25V1.75A1.75 1.75 0 0 0 11.25 0ZM4.5 1.75a.25.25 0 0 1 .25-.25h6.5a.25.25 0 0 1 .25.25v12.5a.25.25 0 0 1-.25.25h-6.5a.25.25 0 0 1-.25-.25Zm3.75 10a.75.75 0 1 1 0 1.5.75.75 0 0 1 0-1.5Z"/></svg>
+            Member since ${new Date(user.createdAt).toLocaleDateString()}
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Avatar picker (hidden by default) -->
-    <div id="profile-avatar-picker" class="hidden" style="padding:12px 24px;border-bottom:1px solid var(--border);">
-      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">Choose avatar style</div>
-      <div class="avatar-picker">
-        ${AVATAR_SEEDS.map(seed => {
-          const url = `https://api.dicebear.com/7.x/identicon/svg?seed=${user.username}_${seed}`;
-          return `<img src="${url}" class="avatar-option ${user.avatar.includes(seed) ? 'selected' : ''}" onclick="selectProfileAvatar('${url}', this)" />`;
-        }).join('')}
-        ${['bottts','micah','fun-emoji','lorelei','avataaars'].map(style => {
-          const url = `https://api.dicebear.com/7.x/${style}/svg?seed=${user.username}`;
-          return `<img src="${url}" class="avatar-option" onclick="selectProfileAvatar('${url}', this)" />`;
-        }).join('')}
+    <!-- ── Avatar Panel ─────────────────────────────────────────────────── -->
+    <div id="avatar-panel" class="hidden" style="border-bottom:1px solid var(--border);background:var(--bg-tertiary);">
+      <!-- Tab bar -->
+      <div style="display:flex;border-bottom:1px solid var(--border);">
+        <div class="avatar-tab active" id="tab-upload" onclick="switchAvatarTab('upload')"
+          style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);">
+          📁 Upload image
+        </div>
+        <div class="avatar-tab" id="tab-generated" onclick="switchAvatarTab('generated')"
+          style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">
+          🎨 Generated
+        </div>
+      </div>
+
+      <!-- Upload tab -->
+      <div id="avatar-tab-upload" style="padding:16px;">
+        <div id="avatar-upload-zone"
+          style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;"
+          onclick="document.getElementById('avatar-file-input').click()"
+          ondragover="avatarDragOver(event)" ondragleave="avatarDragLeave(event)" ondrop="avatarDrop(event)">
+          <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="handleAvatarFileSelect(event)" />
+          <div style="font-size:28px;margin-bottom:8px;">🖼️</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Drop image here or click to browse</div>
+          <div style="font-size:12px;color:var(--text-muted);">JPEG, PNG, GIF, WebP · Max 5 MB</div>
+        </div>
+        <div id="avatar-upload-preview" class="hidden" style="margin-top:12px;">
+          <div style="display:flex;align-items:center;gap:12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <img id="avatar-preview-img" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border);" />
+            <div style="flex:1;min-width:0;">
+              <div id="avatar-preview-name" style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+              <div id="avatar-preview-size" style="font-size:12px;color:var(--text-muted);"></div>
+            </div>
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="clearAvatarFile()" title="Remove">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+            </button>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%;justify-content:center;" onclick="uploadCustomAvatar()" id="avatar-upload-btn">
+            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Z"/></svg>
+            Set as profile picture
+          </button>
+        </div>
+        <div id="avatar-upload-progress" class="hidden" style="margin-top:10px;">
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px);">Uploading avatar…</div>
+          <div class="progress-bar"><div class="progress-fill" id="avatar-progress-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <!-- Generated tab -->
+      <div id="avatar-tab-generated" class="hidden" style="padding:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Choose a style</div>
+        <div class="avatar-picker" id="profile-avatar-picker-generated">
+          ${AVATAR_SEEDS.map(seed => {
+            const url = `https://api.dicebear.com/7.x/identicon/svg?seed=${user.username}_${seed}`;
+            return `<img src="${url}" class="avatar-option" onclick="selectProfileAvatar('${url}', this)" title="${seed}" />`;
+          }).join('')}
+          ${['bottts','micah','fun-emoji','lorelei','avataaars','pixel-art','thumbs'].map(style => {
+            const url = `https://api.dicebear.com/7.x/${style}/svg?seed=${user.username}`;
+            return `<img src="${url}" class="avatar-option" onclick="selectProfileAvatar('${url}', this)" title="${style}" />`;
+          }).join('')}
+        </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="applyGeneratedAvatar()" id="apply-generated-btn" disabled>
+          Apply selected avatar
+        </button>
       </div>
     </div>
 
@@ -774,25 +814,177 @@ function openProfileModal() {
   `;
 }
 
+function toggleAvatarPanel() {
+  const panel = document.getElementById('avatar-panel');
+  panel.classList.toggle('hidden');
+}
+
+function switchAvatarTab(tab) {
+  const uploadTab = document.getElementById('avatar-tab-upload');
+  const generatedTab = document.getElementById('avatar-tab-generated');
+  const tabUpload = document.getElementById('tab-upload');
+  const tabGenerated = document.getElementById('tab-generated');
+
+  if (tab === 'upload') {
+    uploadTab.classList.remove('hidden');
+    generatedTab.classList.add('hidden');
+    tabUpload.style.borderBottomColor = 'var(--accent)';
+    tabUpload.style.color = 'var(--text-primary)';
+    tabGenerated.style.borderBottomColor = 'transparent';
+    tabGenerated.style.color = 'var(--text-secondary)';
+  } else {
+    uploadTab.classList.add('hidden');
+    generatedTab.classList.remove('hidden');
+    tabGenerated.style.borderBottomColor = 'var(--accent)';
+    tabGenerated.style.color = 'var(--text-primary)';
+    tabUpload.style.borderBottomColor = 'transparent';
+    tabUpload.style.color = 'var(--text-secondary)';
+  }
+}
+
+function avatarDragOver(e) {
+  e.preventDefault();
+  document.getElementById('avatar-upload-zone').style.borderColor = 'var(--accent)';
+  document.getElementById('avatar-upload-zone').style.background = 'var(--accent-bg)';
+}
+function avatarDragLeave() {
+  document.getElementById('avatar-upload-zone').style.borderColor = '';
+  document.getElementById('avatar-upload-zone').style.background = '';
+}
+function avatarDrop(e) {
+  e.preventDefault();
+  avatarDragLeave();
+  const file = e.dataTransfer.files[0];
+  if (file) processAvatarFile(file);
+}
+
+function handleAvatarFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processAvatarFile(file);
+}
+
+function processAvatarFile(file) {
+  const allowed = ['image/jpeg','image/png','image/gif','image/webp'];
+  if (!allowed.includes(file.type)) {
+    toast('Please select a JPEG, PNG, GIF, or WebP image', 'error');
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Image must be under 5 MB', 'error');
+    return;
+  }
+
+  state._pendingAvatarFile = file;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('avatar-preview-img').src = e.target.result;
+    document.getElementById('profile-avatar-img').src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+
+  document.getElementById('avatar-preview-name').textContent = file.name;
+  document.getElementById('avatar-preview-size').textContent = formatBytes(file.size);
+  document.getElementById('avatar-upload-preview').classList.remove('hidden');
+  document.getElementById('avatar-upload-zone').classList.add('hidden');
+}
+
+function clearAvatarFile() {
+  state._pendingAvatarFile = null;
+  document.getElementById('avatar-upload-preview').classList.add('hidden');
+  document.getElementById('avatar-upload-zone').classList.remove('hidden');
+  document.getElementById('avatar-file-input').value = '';
+  document.getElementById('profile-avatar-img').src = state.user.avatar;
+}
+
+async function uploadCustomAvatar() {
+  if (!state._pendingAvatarFile) return;
+  const btn = document.getElementById('avatar-upload-btn');
+  const progressEl = document.getElementById('avatar-upload-progress');
+  const fillEl = document.getElementById('avatar-progress-fill');
+
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+  progressEl.classList.remove('hidden');
+
+  let prog = 0;
+  const interval = setInterval(() => {
+    prog = Math.min(prog + Math.random() * 20, 85);
+    fillEl.style.width = prog + '%';
+  }, 150);
+
+  try {
+    const formData = new FormData();
+    formData.append('avatar', state._pendingAvatarFile);
+
+    const res = await fetch(`${API}/auth/avatar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${state.token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+    clearInterval(interval);
+    fillEl.style.width = '100%';
+
+    state.user = data.user;
+    localStorage.setItem('delta_user', JSON.stringify(data.user));
+    state._pendingAvatarFile = null;
+
+    renderNavActions();
+    toast('Profile picture updated! ✓', 'success');
+
+    setTimeout(() => renderProfileModalContent(), 400);
+  } catch (e) {
+    clearInterval(interval);
+    toast(e.message || 'Avatar upload failed', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Set as profile picture';
+    progressEl.classList.add('hidden');
+    fillEl.style.width = '0%';
+  }
+}
+
 function selectProfileAvatar(url, el) {
-  document.querySelectorAll('#profile-avatar-picker .avatar-option').forEach(e => e.classList.remove('selected'));
+  document.querySelectorAll('#profile-avatar-picker-generated .avatar-option').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
-  document.getElementById('profile-avatar-img').src = url;
   state._pendingAvatar = url;
+  document.getElementById('profile-avatar-img').src = url;
+  const applyBtn = document.getElementById('apply-generated-btn');
+  if (applyBtn) applyBtn.disabled = false;
+}
+
+async function applyGeneratedAvatar() {
+  if (!state._pendingAvatar) return;
+  const btn = document.getElementById('apply-generated-btn');
+  btn.disabled = true;
+  btn.textContent = 'Applying…';
+  try {
+    const res = await api('PATCH', '/auth/profile', { avatar: state._pendingAvatar });
+    state.user = res.user;
+    localStorage.setItem('delta_user', JSON.stringify(res.user));
+    renderNavActions();
+    toast('Avatar updated! ✓', 'success');
+    delete state._pendingAvatar;
+    setTimeout(() => renderProfileModalContent(), 200);
+  } catch (e) {
+    toast(e.message || 'Could not update avatar', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Apply selected avatar';
+  }
 }
 
 async function saveProfile() {
   const bio = document.getElementById('profile-bio-input').value;
   const location = document.getElementById('profile-location-input').value;
-  const avatar = state._pendingAvatar || state.user.avatar;
   try {
-    const res = await api('PATCH', '/auth/profile', { bio, location, avatar });
+    const res = await api('PATCH', '/auth/profile', { bio, location });
     state.user = res.user;
     localStorage.setItem('delta_user', JSON.stringify(res.user));
     renderNavActions();
     closeProfileModal();
     toast('Profile updated! ✓', 'success');
-    delete state._pendingAvatar;
   } catch (e) {
     toast(e.message || 'Could not save profile', 'error');
   }
@@ -800,7 +992,6 @@ async function saveProfile() {
 
 function closeProfileModal() { document.getElementById('profile-modal').classList.add('hidden'); }
 
-// ── Filters ───────────────────────────────────────────────────────────────────
 function setFilter(f) {
   state.currentFilter = f;
   navigate('explore');
@@ -829,8 +1020,8 @@ function filterFiles(files) {
 function sortFiles(files) {
   const sorted = [...files];
   switch (state.currentSort) {
-    case 'newest': sorted.sort((a, b) => (b.size || 0) - (a.size || 0)); break; // proxy sort since we don't have date
-    case 'oldest': sorted.sort((a, b) => (a.size || 0) - (b.size || 0)); break;
+    case 'newest': sorted.sort((a, b) => new Date(b.uploadedAt || 0) - new Date(a.uploadedAt || 0)); break;
+    case 'oldest': sorted.sort((a, b) => new Date(a.uploadedAt || 0) - new Date(b.uploadedAt || 0)); break;
     case 'largest': sorted.sort((a, b) => (b.size || 0) - (a.size || 0)); break;
     case 'name': sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '')); break;
   }
@@ -842,7 +1033,6 @@ function filterLabel(f) {
   return labels[f] || f;
 }
 
-// ── Command Palette ───────────────────────────────────────────────────────────
 function openCommandPalette() {
   document.getElementById('cmd-palette').classList.remove('hidden');
   document.getElementById('cmd-input').focus();
@@ -871,7 +1061,7 @@ function updateCmdResults(query) {
   if (filtered.length) {
     html += `<div class="cmd-section">Navigation</div>`;
     html += filtered.map((p, i) => `
-      <div class="cmd-item ${i===state.cmdSelected?'selected':''}" onclick="p${i}_action()" id="cmd-item-${i}">
+      <div class="cmd-item ${i===state.cmdSelected?'selected':''}" id="cmd-item-${i}">
         <div class="cmd-item-icon">${p.icon}</div>
         <div class="cmd-item-info">
           <div class="cmd-item-name">${p.name}</div>
@@ -897,17 +1087,14 @@ function updateCmdResults(query) {
   if (!html) html = `<div class="cmd-item" style="color:var(--text-muted);justify-content:center;">No results for "${query}"</div>`;
   el.innerHTML = html;
 
-  // Re-bind nav actions
   filtered.forEach((p, i) => {
     const item = document.getElementById(`cmd-item-${i}`);
     if (item) item.onclick = () => { p.action(); closeCommandPalette(); };
   });
 }
 
-// ── Keyboard ──────────────────────────────────────────────────────────────────
 function initKeyboard() {
   document.addEventListener('keydown', e => {
-    // Cmd+K or Ctrl+K
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
       if (document.getElementById('cmd-palette').classList.contains('hidden')) {
@@ -928,7 +1115,6 @@ function initKeyboard() {
     updateCmdResults(e.target.value);
   });
 
-  // Click outside to close cmd palette
   document.getElementById('cmd-palette').addEventListener('click', e => {
     if (e.target === document.getElementById('cmd-palette')) closeCommandPalette();
   });
@@ -943,7 +1129,6 @@ function initKeyboard() {
   });
 }
 
-// ── Search ────────────────────────────────────────────────────────────────────
 function initSearch() {
   const input = document.getElementById('search-input');
   const searchBox = document.getElementById('nav-search-box');
@@ -951,7 +1136,6 @@ function initSearch() {
   input.addEventListener('focus', () => { openCommandPalette(); input.blur(); });
 }
 
-// ── Avatar Picker (Register) ──────────────────────────────────────────────────
 function buildAvatarPicker() {
   const picker = document.getElementById('avatar-picker');
   const styles = ['identicon','bottts','micah','fun-emoji','lorelei','avataaars','pixel-art','thumbs'];
@@ -968,7 +1152,6 @@ function selectAvatar(url, el) {
   state.selectedAvatar = url;
 }
 
-// ── Password Strength ─────────────────────────────────────────────────────────
 function initPasswordStrength() {
   document.getElementById('reg-password')?.addEventListener('input', e => {
     const val = e.target.value;
@@ -995,7 +1178,6 @@ function togglePass(id, btn) {
   input.type = input.type === 'password' ? 'text' : 'password';
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -1010,7 +1192,6 @@ function toast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = {
     method,
@@ -1024,7 +1205,6 @@ async function api(method, path, body) {
   return data;
 }
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
 function toggleTheme() {
   const html = document.documentElement;
   const current = html.getAttribute('data-theme');
@@ -1036,7 +1216,6 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024, sizes = ['B','KB','MB','GB'];
@@ -1068,10 +1247,14 @@ function escapeHtml(s) {
 
 function setLoading(btn, loading) {
   if (!btn) return;
-  btn.disabled = loading;
-  btn.innerHTML = loading
-    ? `<svg class="spin" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z" opacity=".25"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5.75.75 0 0 0 1.5 0A8 8 0 0 0 8 0a.75.75 0 0 0 0 1.5Z"/></svg> Loading…`
-    : btn._origText || 'Submit';
+  if (loading) {
+    btn._origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="spin" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z" opacity=".25"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5.75.75 0 0 0 1.5 0A8 8 0 0 0 8 0a.75.75 0 0 0 0 1.5Z"/></svg> Loading…`;
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btn._origText || 'Submit';
+  }
 }
 
 function getFileIcon(ext) {
