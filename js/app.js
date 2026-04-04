@@ -656,7 +656,7 @@ function openComposeModal() {
   document.getElementById('compose-modal').classList.remove('hidden');
   document.getElementById('compose-to').focus();
 }
-
+ 
 function closeComposeModal() {
   const modal = document.getElementById('compose-modal');
   if (modal) modal.classList.add('hidden');

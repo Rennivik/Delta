@@ -71,7 +71,7 @@
     a {
       display: inline-block;
       padding: 12px 24px;
-      background: #4f46e5;
+      background: #58a6ff;
       color: white;
       text-decoration: none;
       border-radius: 10px;
@@ -80,14 +80,19 @@
     }
 
     a:hover {
-      background: #3730a3;
+      background: #3c6ea8;
       transform: translateY(-2px);
+    }
+
+    .ghost-wrap {
+      animation: float 2s ease-in-out infinite;
+      display: inline-block;
     }
 
     .ghost {
       font-size: 60px;
-      margin-bottom: 20px;
-      animation: float 2s ease-in-out infinite;
+      transition: transform 0.3s ease;
+      display: inline-block;
     }
 
     @keyframes float {
@@ -96,6 +101,20 @@
     }
   </style>
 </head>
+
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const ghost = document.querySelector(".ghost");
+
+    function randomRotate() {
+      const angle = Math.floor(Math.random() * 360);
+      ghost.style.transform = `rotate(${angle}deg)`;
+    }
+
+    randomRotate();
+    setInterval(randomRotate, 900);
+  });
+</script>
 
 <body>
   <script>
@@ -118,9 +137,11 @@
   </script>
 
   <div class="container">
-    <div class="ghost">👻</div>
+    <div class="ghost-wrap">
+      <div class="ghost">👻</div>
+    </div>
 
-    <h1>404</h1>
+    <h1>! 404 !</h1>
     <h2>Page Not Found</h2>
 
     <p>
@@ -130,6 +151,5 @@
 
     <a href="https://rennivik.github.io/Delta">Go Home</a>
   </div>
-
 </body>
 </html>
