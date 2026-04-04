@@ -479,7 +479,7 @@ function renderFileRow(f, showDelete = false) {
   if (f.name == ".gitkeep") {
     return
   }
-  
+
   const uploader = f.uploader || 'unknown';
   const avatarUrl =
     f.uploaderAvatar ||
@@ -519,7 +519,11 @@ function renderFileRow(f, showDelete = false) {
 
 function renderFileCard(f) {
   const uploader = f.uploader || 'unknown';
-  const avatarUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
+  const avatarUrl =
+    f.uploaderAvatar ||
+    f.avatar ||
+    `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
+    
   const isImage = ['png','jpg','jpeg','gif','webp','svg'].includes(f.ext || '');
   return `
     <div class="file-card" onclick="openPreview('${f.name}','${f.download_url}','${f.ext || ''}')">
