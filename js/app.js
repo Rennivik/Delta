@@ -686,6 +686,7 @@ async function renderAdmin(el) {
     el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Access denied</h3></div>`;
     return;
   }
+ 
   el.innerHTML = `
     <div class="breadcrumb">
       <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
@@ -693,11 +694,31 @@ async function renderAdmin(el) {
       <span class="breadcrumb-item active">Admin Panel</span>
     </div>
     <div class="section-header">
-      <div><h2>Admin Panel</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Manage pending account approvals</p></div>
+      <div><h2>Admin Panel</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Manage users and approvals</p></div>
     </div>
-    <div class="card" id="pending-list"><div style="padding:20px;">${skeletonRows(2)}</div></div>
+ 
+    <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;">
+      <button class="btn btn-ghost btn-sm" id="tab-btn-pending" onclick="switchAdminTab('pending')"
+        style="border-bottom:2px solid var(--accent);border-radius:0;padding-bottom:10px;">
+        ⏳ Pending Approvals
+      </button>
+      <button class="btn btn-ghost btn-sm" id="tab-btn-users" onclick="switchAdminTab('users')"
+        style="border-bottom:2px solid transparent;border-radius:0;padding-bottom:10px;">
+        👥 User Management
+      </button>
+    </div>
+ 
+    <div id="admin-tab-pending">
+      <div class="card" id="pending-list"><div style="padding:20px;">${skeletonRows(2)}</div></div>
+    </div>
+ 
+    <div id="admin-tab-users" class="hidden">
+      <div class="card" id="users-list"><div style="padding:20px;">${skeletonRows(3)}</div></div>
+    </div>
   `;
+ 
   loadPendingAccounts();
+  loadAdminUsers();
 }
 
 async function loadPendingAccounts() {
@@ -705,12 +726,12 @@ async function loadPendingAccounts() {
     const res = await api('GET', '/admin/pending');
     const el = document.getElementById('pending-list');
     if (!el) return;
-
+ 
     if (res.pending.length === 0) {
       el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>No pending approvals</h3><p>All accounts are up to date.</p></div>`;
       return;
     }
-
+ 
     el.innerHTML = `
       <div class="card-header"><h3>Pending accounts (${res.pending.length})</h3></div>
       ${res.pending.map(u => `
@@ -733,11 +754,124 @@ async function loadPendingAccounts() {
   }
 }
 
+// ── switchAdminTab ───────────────────────────────────────
+function switchAdminTab(tab) {
+  const isPending = tab === 'pending';
+  document.getElementById('admin-tab-pending').classList.toggle('hidden', !isPending);
+  document.getElementById('admin-tab-users').classList.toggle('hidden', isPending);
+  document.getElementById('tab-btn-pending').style.borderBottomColor = isPending ? 'var(--accent)' : 'transparent';
+  document.getElementById('tab-btn-users').style.borderBottomColor = !isPending ? 'var(--accent)' : 'transparent';
+}
+
+// ── loadAdminUsers ───────────────────────────────────────
+async function loadAdminUsers() {
+  try {
+    const res = await api('GET', '/admin/users');
+    const el = document.getElementById('users-list');
+    if (!el) return;
+ 
+    if (res.users.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No users yet</h3></div>`;
+      return;
+    }
+ 
+    el.innerHTML = `
+      <div class="card-header"><h3>All users (${res.users.length})</h3></div>
+      ${res.users.map(u => {
+        const isAdmin = u.username === ADMIN_USER;
+        return `
+          <div class="file-item" style="grid-template-columns:44px 1fr auto;">
+            <img src="${escapeHtml(u.avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+            <div style="min-width:0;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:600;font-size:13px;">${escapeHtml(u.username)}</span>
+                ${isAdmin ? `<span style="font-size:10px;font-weight:700;background:var(--warning);color:#000;border-radius:4px;padding:1px 5px;">ADMIN</span>` : ''}
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);">
+                ${u.uploads || 0} files · ${formatBytes(u.totalSize || 0)} · joined ${timeAgo(u.createdAt)}
+              </div>
+            </div>
+            ${isAdmin
+              ? `<div style="font-size:12px;color:var(--text-muted);padding-right:4px;">Protected</div>`
+              : `<div style="display:flex;gap:6px;flex-shrink:0;">
+                  <button class="btn btn-secondary btn-sm" onclick="openResetPasswordModal('${escapeHtml(u.username)}')">🔑 Reset PW</button>
+                  <button class="btn btn-danger btn-sm" onclick="adminDeleteUser('${escapeHtml(u.username)}')">🗑 Delete</button>
+                </div>`
+            }
+          </div>
+        `;
+      }).join('')}
+    `;
+  } catch (e) {
+    const el = document.getElementById('users-list');
+    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Could not load users</h3><p>${e.message}</p></div>`;
+  }
+}
+
+// ── openResetPasswordModal ───────────────────────────────
+function openResetPasswordModal(username) {
+  const modal = document.getElementById('compose-modal');
+  const inner = document.getElementById('compose-modal-inner');
+  inner.innerHTML = `
+    <button class="modal-close" onclick="closeComposeModal()">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+    </button>
+    <div class="modal-header">
+      <h2>Reset Password</h2>
+      <p>Set a new password for <strong>${escapeHtml(username)}</strong></p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="form-group">
+        <label>New Password</label>
+        <div class="input-wrap">
+          <input type="password" id="reset-pw-input" placeholder="at least 6 characters" autocomplete="new-password" />
+          <button class="input-toggle" onclick="togglePass('reset-pw-input')">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.794 6.527 12.5 8 12.5c1.473 0 2.825-.706 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.825 4.206 9.473 3.5 8 3.5c-1.473 0-2.825.706-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" id="reset-pw-btn" onclick="submitResetPassword('${escapeHtml(username)}')">Set password</button>
+        <button class="btn btn-secondary" onclick="closeComposeModal()">Cancel</button>
+      </div>
+    </div>
+  `;
+  modal.classList.remove('hidden');
+  document.getElementById('reset-pw-input').focus();
+}
+ 
+// ── submitResetPassword ──────────────────────────────────
+async function submitResetPassword(username) {
+  const password = document.getElementById('reset-pw-input').value;
+  if (!password || password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  const btn = document.getElementById('reset-pw-btn');
+  setLoading(btn, true);
+  try {
+    await api('POST', `/admin/users/${encodeURIComponent(username)}/password`, { password });
+    closeComposeModal();
+    toast(`Password reset for ${username} ✓`, 'success');
+  } catch (e) {
+    toast(e.message || 'Could not reset password', 'error');
+  } finally {
+    setLoading(btn, false);
+  }
+}
+
+async function adminDeleteUser(username) {
+  if (!confirm(`Permanently delete user "${username}"?\n\nThis cannot be undone.`)) return;
+  try {
+    await api('DELETE', `/admin/users/${encodeURIComponent(username)}`);
+    toast(`${username} deleted.`, 'info');
+    loadAdminUsers();
+  } catch (e) { toast(e.message || 'Could not delete user', 'error'); }
+}
+
 async function approveAccount(username) {
   try {
     await api('POST', `/admin/approve/${encodeURIComponent(username)}`);
     toast(`${username} approved! They can now sign in.`, 'success');
     loadPendingAccounts();
+    loadAdminUsers();
   } catch (e) { toast(e.message || 'Could not approve', 'error'); }
 }
 
