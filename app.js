@@ -477,7 +477,11 @@ function statCard(icon, value, label) {
 // ── File Rendering ────────────────────────────────────────────────────────────
 function renderFileRow(f, showDelete = false) {
   const uploader = f.uploader || 'unknown';
-  const avatarUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
+  const avatarUrl =
+    f.uploaderAvatar ||
+    f.avatar ||
+    `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
+    
   return `
     <div class="file-item" onclick="openPreview('${f.name}','${f.download_url}','${f.ext || ''}')">
       <div class="file-icon">${f.icon || '📁'}</div>
