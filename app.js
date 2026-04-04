@@ -481,10 +481,6 @@ function renderFileRow(f, showDelete = false) {
   }
 
   const uploader = f.uploader || 'unknown';
-  const avatarUrl =
-    f.uploaderAvatar ||
-    f.avatar ||
-    `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
 
   return `
     <div class="file-item" onclick="openPreview('${f.name}','${f.download_url}','${f.ext || ''}')">
@@ -493,7 +489,7 @@ function renderFileRow(f, showDelete = false) {
         <div class="file-name">${f.originalName || f.name}</div>
         <div class="file-meta">
           <div class="file-uploader">
-            <img src="${avatarUrl}" alt="${uploader}" />
+            <img src="${getAvatar(uploader)}" alt="${uploader}" />
             <span>${uploader}</span>
           </div>
           <span>·</span>
@@ -519,12 +515,8 @@ function renderFileRow(f, showDelete = false) {
 
 function renderFileCard(f) {
   const uploader = f.uploader || 'unknown';
-  const avatarUrl =
-    f.uploaderAvatar ||
-    f.avatar ||
-    `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
-    
   const isImage = ['png','jpg','jpeg','gif','webp','svg'].includes(f.ext || '');
+
   return `
     <div class="file-card" onclick="openPreview('${f.name}','${f.download_url}','${f.ext || ''}')">
       <div class="file-card-preview">
@@ -534,7 +526,7 @@ function renderFileCard(f) {
         <div class="file-card-name" title="${f.originalName || f.name}">${f.originalName || f.name}</div>
         <div class="file-card-meta">
           <div class="file-card-uploader">
-            <img src="${avatarUrl}" alt="${uploader}" />
+            <img src="${getAvatar(uploader)}" alt="${uploader}" />
             <span>${uploader}</span>
           </div>
           <span>·</span>
@@ -1238,6 +1230,10 @@ function toggleTheme() {
 })();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function getAvatar(user) {
+  return API + `/avatar/${user}`
+}
+
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024, sizes = ['B','KB','MB','GB'];
