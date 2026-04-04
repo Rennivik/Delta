@@ -14,7 +14,6 @@ let state = {
   cmdSelected: 0,
   cmdItems: [],
   uploadFile: null,
-  uploadPublic: true,
   searchQuery: '',
 };
 
@@ -286,7 +285,7 @@ async function renderExplore(el) {
       <span class="breadcrumb-item active">Explore</span>
     </div>
     <div class="section-header">
-      <div><h2>Explore files</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Browse public files from the community</p></div>
+      <div><h2>Explore files</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Browse files from the community</p></div>
     </div>
     <div class="filter-bar">
       ${['all','images','documents','code','archives'].map(f => `
@@ -380,13 +379,6 @@ async function renderUpload(el) {
         <div class="form-group">
           <label>Description <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
           <textarea id="upload-desc" placeholder="What's this file? Add a description…" rows="2"></textarea>
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-label">Public file</div>
-            <div class="toggle-desc">Anyone can see and download this file</div>
-          </div>
-          <div class="toggle on" id="public-toggle" onclick="togglePublic()"></div>
         </div>
         <div id="upload-progress" class="hidden">
           <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;" id="upload-status">Uploading…</div>
@@ -501,7 +493,6 @@ function renderFileRow(f, showDelete = false) {
           ${f.description ? `<span>·</span><span style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:200px;">${escapeHtml(f.description)}</span>` : ''}
         </div>
       </div>
-      <div class="file-badge badge-public">Public</div>
       <div class="file-size mono">${f.formattedSize || ''}</div>
       <div class="file-actions" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-icon btn-sm" title="Download" onclick="downloadFile('${f.name}','${f.download_url}')">
@@ -648,11 +639,6 @@ function clearUpload() {
   if (input) input.value = '';
 }
 
-function togglePublic() {
-  state.uploadPublic = !state.uploadPublic;
-  document.getElementById('public-toggle').classList.toggle('on', state.uploadPublic);
-}
-
 async function handleUpload() {
   if (!state.uploadFile) { toast('Please select a file', 'error'); return; }
   const btn = document.getElementById('upload-btn');
@@ -673,7 +659,6 @@ async function handleUpload() {
     const formData = new FormData();
     formData.append('file', state.uploadFile);
     formData.append('description', document.getElementById('upload-desc').value);
-    formData.append('isPublic', state.uploadPublic);
 
     const res = await fetch(`${API}/files/upload`, {
       method: 'POST',
