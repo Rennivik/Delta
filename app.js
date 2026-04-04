@@ -105,7 +105,7 @@ function switchAuthMode(mode) {
   document.getElementById('login-form').classList.toggle('hidden', isReg);
   document.getElementById('register-form').classList.toggle('hidden', !isReg);
   document.getElementById('auth-modal-title').textContent = isReg ? 'Create your account' : 'Sign in to Delta';
-  document.getElementById('auth-modal-sub').textContent = isReg ? 'Start sharing files today.' : 'Share files with the world.';
+  document.getElementById('auth-modal-sub').textContent = isReg ? 'Start sharing files today.' : 'Share files with anyone.';
 }
 
 function openAuthModal(mode = 'login') {
@@ -801,7 +801,7 @@ function renderProfileModalContent() {
       </div>
       <div class="form-group">
         <label>Location</label>
-        <input type="text" id="profile-location-input" placeholder="San Francisco, CA" value="${escapeHtml(user.location || '')}" />
+        <input type="text" id="profile-location-input" placeholder="England, UK" value="${escapeHtml(user.location || '')}" />
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="saveProfile()">Save changes</button>
