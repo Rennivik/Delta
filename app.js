@@ -208,8 +208,8 @@ function renderLanding() {
         <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8 .25a7.75 7.75 0 1 0 0 15.5A7.75 7.75 0 0 0 8 .25Z"/></svg>
         Open file sharing platform
       </div>
-      <h1>Share files with the world</h1>
-      <p>Delta is a modern file sharing platform built on GitHub. Upload, manage, and share files with a familiar developer-friendly interface.</p>
+      <h1>Share files with the anyone</h1>
+      <p>Delta is a file sharing platform built with GitHub. Upload, manage, and share files with a user friendly interface.</p>
       <div class="hero-actions">
         <button class="btn btn-primary" onclick="openAuthModal('register')">
           <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Z"/></svg>
