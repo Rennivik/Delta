@@ -1,5 +1,7 @@
+// ── Config ────────────────────────────────────────────────────────────────────
 const API = 'https://delta-server-vyed.onrender.com';
 
+// ── State ─────────────────────────────────────────────────────────────────────
 let state = {
   user: null,
   token: null,
@@ -16,8 +18,10 @@ let state = {
   searchQuery: '',
 };
 
+// ── Avatar seeds ──────────────────────────────────────────────────────────────
 const AVATAR_SEEDS = ['alpha','beta','gamma','delta','echo','foxtrot','golf','hotel','india','juliet','kilo','lima'];
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadAuth();
   renderNavActions();
@@ -28,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordStrength();
 });
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
 function loadAuth() {
   const token = localStorage.getItem('delta_token');
   const user = localStorage.getItem('delta_user');
@@ -62,15 +67,14 @@ async function handleLogin() {
 
 async function handleRegister() {
   const username = document.getElementById('reg-username').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
-  if (!username || !email || !password) { toast('Please fill in all fields', 'error'); return; }
+  if (!username || !password) { toast('Please fill in all fields', 'error'); return; }
   if (password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
   const avatar = state.selectedAvatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${username}`;
   const btn = document.querySelector('#register-form .btn-primary');
   setLoading(btn, true);
   try {
-    const res = await api('POST', '/auth/register', { username, email, password, avatar });
+    const res = await api('POST', '/auth/register', { username, password, avatar });
     state.token = res.token;
     state.user = res.user;
     localStorage.setItem('delta_token', res.token);
@@ -111,6 +115,7 @@ function openAuthModal(mode = 'login') {
 }
 function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
 
+// ── Nav ───────────────────────────────────────────────────────────────────────
 function renderNavActions() {
   const el = document.getElementById('nav-actions');
   if (state.user) {
@@ -167,6 +172,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#user-dropdown')) closeDropdown();
 });
 
+// ── Navigation ────────────────────────────────────────────────────────────────
 function navigate(view) {
   state.currentView = view;
   document.querySelectorAll('.sidebar-item').forEach(el => {
@@ -182,6 +188,7 @@ function navigate(view) {
   }
 }
 
+// ── Views ─────────────────────────────────────────────────────────────────────
 async function renderHome(el) {
   el.innerHTML = `
     ${state.user ? renderDashboard() : renderLanding()}
@@ -397,6 +404,7 @@ async function renderUpload(el) {
   `;
 }
 
+// ── File Loading ──────────────────────────────────────────────────────────────
 async function loadExploreFiles(containerId, limit = 50) {
   try {
     const res = await api('GET', '/files');
@@ -474,6 +482,7 @@ function statCard(icon, value, label) {
   return `<div class="stat-card"><div class="stat-icon">${icon}</div><div class="stat-number">${value}</div><div class="stat-label">${label}</div></div>`;
 }
 
+// ── File Rendering ────────────────────────────────────────────────────────────
 function renderFileRow(f, showDelete = false) {
   const uploader = f.uploader || 'unknown';
   const avatarUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${uploader}`;
@@ -533,6 +542,7 @@ function renderFileCard(f) {
   `;
 }
 
+// ── File Actions ──────────────────────────────────────────────────────────────
 function openPreview(name, url, ext) {
   const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
   const isPdf = ext === 'pdf';
@@ -596,6 +606,7 @@ async function deleteFile(name) {
   }
 }
 
+// ── Upload ────────────────────────────────────────────────────────────────────
 function handleFileSelect(e) {
   const file = e.target.files[0];
   if (file) setUploadFile(file);
@@ -694,6 +705,7 @@ async function handleUpload() {
   }
 }
 
+// ── Profile Modal ─────────────────────────────────────────────────────────────
 function openProfileModal() {
   if (!state.user) { openAuthModal('login'); return; }
   closeDropdown();
@@ -814,6 +826,7 @@ function renderProfileModalContent() {
   `;
 }
 
+// ── Avatar panel helpers ──────────────────────────────────────────────────────
 function toggleAvatarPanel() {
   const panel = document.getElementById('avatar-panel');
   panel.classList.toggle('hidden');
@@ -876,10 +889,11 @@ function processAvatarFile(file) {
 
   state._pendingAvatarFile = file;
 
+  // Show preview
   const reader = new FileReader();
   reader.onload = (e) => {
     document.getElementById('avatar-preview-img').src = e.target.result;
-    document.getElementById('profile-avatar-img').src = e.target.result;
+    document.getElementById('profile-avatar-img').src = e.target.result; // live preview
   };
   reader.readAsDataURL(file);
 
@@ -935,6 +949,7 @@ async function uploadCustomAvatar() {
     renderNavActions();
     toast('Profile picture updated! ✓', 'success');
 
+    // Re-render profile modal with new avatar
     setTimeout(() => renderProfileModalContent(), 400);
   } catch (e) {
     clearInterval(interval);
@@ -950,7 +965,7 @@ function selectProfileAvatar(url, el) {
   document.querySelectorAll('#profile-avatar-picker-generated .avatar-option').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
   state._pendingAvatar = url;
-  document.getElementById('profile-avatar-img').src = url;
+  document.getElementById('profile-avatar-img').src = url; // live preview
   const applyBtn = document.getElementById('apply-generated-btn');
   if (applyBtn) applyBtn.disabled = false;
 }
@@ -992,6 +1007,7 @@ async function saveProfile() {
 
 function closeProfileModal() { document.getElementById('profile-modal').classList.add('hidden'); }
 
+// ── Filters ───────────────────────────────────────────────────────────────────
 function setFilter(f) {
   state.currentFilter = f;
   navigate('explore');
@@ -1033,6 +1049,7 @@ function filterLabel(f) {
   return labels[f] || f;
 }
 
+// ── Command Palette ───────────────────────────────────────────────────────────
 function openCommandPalette() {
   document.getElementById('cmd-palette').classList.remove('hidden');
   document.getElementById('cmd-input').focus();
@@ -1093,6 +1110,7 @@ function updateCmdResults(query) {
   });
 }
 
+// ── Keyboard ──────────────────────────────────────────────────────────────────
 function initKeyboard() {
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -1129,6 +1147,7 @@ function initKeyboard() {
   });
 }
 
+// ── Search ────────────────────────────────────────────────────────────────────
 function initSearch() {
   const input = document.getElementById('search-input');
   const searchBox = document.getElementById('nav-search-box');
@@ -1136,6 +1155,7 @@ function initSearch() {
   input.addEventListener('focus', () => { openCommandPalette(); input.blur(); });
 }
 
+// ── Avatar Picker (Register) ──────────────────────────────────────────────────
 function buildAvatarPicker() {
   const picker = document.getElementById('avatar-picker');
   const styles = ['identicon','bottts','micah','fun-emoji','lorelei','avataaars','pixel-art','thumbs'];
@@ -1152,6 +1172,7 @@ function selectAvatar(url, el) {
   state.selectedAvatar = url;
 }
 
+// ── Password Strength ─────────────────────────────────────────────────────────
 function initPasswordStrength() {
   document.getElementById('reg-password')?.addEventListener('input', e => {
     const val = e.target.value;
@@ -1178,6 +1199,7 @@ function togglePass(id, btn) {
   input.type = input.type === 'password' ? 'text' : 'password';
 }
 
+// ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -1192,6 +1214,7 @@ function toast(message, type = 'info', duration = 3000) {
   }, duration);
 }
 
+// ── API ───────────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = {
     method,
@@ -1205,6 +1228,7 @@ async function api(method, path, body) {
   return data;
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
 function toggleTheme() {
   const html = document.documentElement;
   const current = html.getAttribute('data-theme');
@@ -1216,6 +1240,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', saved);
 })();
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024, sizes = ['B','KB','MB','GB'];
