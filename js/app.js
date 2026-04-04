@@ -817,33 +817,33 @@ function openResetPasswordModal(username) {
     console.error('Modal elements missing');
     return;
   }
-  
+
   inner.innerHTML = `
-    <button class="modal-close" onclick="closeComposeModal()">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
-    </button>
     <div class="modal-header">
       <h2>Reset Password</h2>
       <p>Set a new password for <strong>${escapeHtml(username)}</strong></p>
     </div>
+
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="form-group">
-        <label>New Password</label>
-        <div class="input-wrap">
-          <input type="password" id="reset-pw-input" placeholder="at least 6 characters" autocomplete="new-password" />
-          <button class="input-toggle" onclick="togglePass('reset-pw-input')">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.794 6.527 12.5 8 12.5c1.473 0 2.825-.706 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.825 4.206 9.473 3.5 8 3.5c-1.473 0-2.825.706-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>
-          </button>
-        </div>
-      </div>
+      <input type="password" id="reset-pw-input" placeholder="at least 6 characters" />
+
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" id="reset-pw-btn" onclick="submitResetPassword('${escapeHtml(username)}')">Set password</button>
-        <button class="btn btn-secondary" onclick="closeComposeModal()">Cancel</button>
+        <button class="btn btn-primary" id="reset-pw-btn">Set password</button>
+        <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
       </div>
     </div>
   `;
+
   modal.classList.remove('hidden');
-  document.getElementById('reset-pw-input').focus();
+
+  const input = document.getElementById('reset-pw-input');
+  const btn = document.getElementById('reset-pw-btn');
+  const cancel = document.getElementById('cancel-btn');
+
+  input.focus();
+
+  btn.addEventListener('click', () => submitResetPassword(username));
+  cancel.addEventListener('click', closeComposeModal);
 }
  
 // ── submitResetPassword ──────────────────────────────────
@@ -851,14 +851,14 @@ async function submitResetPassword(username) {
   const input = document.getElementById('reset-pw-input');
 
   if (!input) {
-    console.error('reset-pw-input not found');
-    toast('Something went wrong. Try reopening the modal.', 'error');
+    console.error('Input missing — modal probably got re-rendered');
+    toast('UI error. Reopen modal.', 'error');
     return;
   }
 
-  const password = input.value;
+  const password = input.value.trim();
 
-  if (!password || password.length < 6) {
+  if (password.length < 6) {
     toast('Password must be at least 6 characters', 'error');
     return;
   }
