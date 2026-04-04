@@ -812,6 +812,12 @@ async function loadAdminUsers() {
 function openResetPasswordModal(username) {
   const modal = document.getElementById('compose-modal');
   const inner = document.getElementById('compose-modal-inner');
+
+  if (!modal || !inner) {
+    console.error('Modal elements missing');
+    return;
+  }
+  
   inner.innerHTML = `
     <button class="modal-close" onclick="closeComposeModal()">
       <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
@@ -842,10 +848,24 @@ function openResetPasswordModal(username) {
  
 // ── submitResetPassword ──────────────────────────────────
 async function submitResetPassword(username) {
-  const password = document.getElementById('reset-pw-input').value;
-  if (!password || password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  const input = document.getElementById('reset-pw-input');
+
+  if (!input) {
+    console.error('reset-pw-input not found');
+    toast('Something went wrong. Try reopening the modal.', 'error');
+    return;
+  }
+
+  const password = input.value;
+
+  if (!password || password.length < 6) {
+    toast('Password must be at least 6 characters', 'error');
+    return;
+  }
+
   const btn = document.getElementById('reset-pw-btn');
   setLoading(btn, true);
+
   try {
     await api('POST', `/admin/users/${encodeURIComponent(username)}/password`, { password });
     closeComposeModal();
