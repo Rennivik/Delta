@@ -136,8 +136,8 @@ function loadAuth() {
 }
 
 async function handleLogin() {
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
+  const username = safeValue('login-username');
+  const password = safeValue('login-password');
   if (!username || !password) { toast('Please fill in all fields', 'error'); return; }
   const btn = document.querySelector('#login-form .btn-primary');
   setLoading(btn, true);
@@ -160,8 +160,8 @@ async function handleLogin() {
 }
 
 async function handleRegister() {
-  const username = document.getElementById('reg-username').value.trim();
-  const password = document.getElementById('reg-password').value;
+  const username = safeValue('reg-username');
+  const password = safeValue('reg-password');
   if (!username || !password) { toast('Please fill in all fields', 'error'); return; }
   if (password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
   const avatar = state.selectedAvatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${username}`;
@@ -656,15 +656,21 @@ function openComposeModal() {
   document.getElementById('compose-modal').classList.remove('hidden');
   document.getElementById('compose-to').focus();
 }
+
 function closeComposeModal() {
-  document.getElementById('compose-modal').classList.add('hidden');
-  document.getElementById('compose-to').value = '';
-  document.getElementById('compose-body').value = '';
+  const modal = document.getElementById('compose-modal');
+  if (modal) modal.classList.add('hidden');
+
+  const to = document.getElementById('compose-to');
+  const body = document.getElementById('compose-body');
+
+  if (to) to.value = '';
+  if (body) body.value = '';
 }
 
 async function sendCompose() {
-  const to = document.getElementById('compose-to').value.trim();
-  const body = document.getElementById('compose-body').value.trim();
+  const to = safeValue('compose-to');
+  const body = safeValue('compose-body');
   if (!to || !body) { toast('Please fill in all fields', 'error'); return; }
   const btn = document.getElementById('compose-send-btn');
   setLoading(btn, true);
@@ -809,14 +815,13 @@ async function loadAdminUsers() {
 }
 
 // ── openResetPasswordModal ───────────────────────────────
+let resetPwState = null;
+
 function openResetPasswordModal(username) {
   const modal = document.getElementById('compose-modal');
   const inner = document.getElementById('compose-modal-inner');
 
-  if (!modal || !inner) {
-    console.error('Modal elements missing');
-    return;
-  }
+  if (!modal || !inner) return;
 
   inner.innerHTML = `
     <div class="modal-header">
@@ -836,25 +841,26 @@ function openResetPasswordModal(username) {
 
   modal.classList.remove('hidden');
 
-  const input = document.getElementById('reset-pw-input');
-  const btn = document.getElementById('reset-pw-btn');
-  const cancel = document.getElementById('cancel-btn');
+  const input = inner.querySelector('#reset-pw-input');
+  const btn = inner.querySelector('#reset-pw-btn');
+  const cancel = inner.querySelector('#cancel-btn');
+
+  resetPwState = { username, input, btn };
 
   input.focus();
 
-  btn.addEventListener('click', () => submitResetPassword(username));
-  cancel.addEventListener('click', closeComposeModal);
+  btn.onclick = () => submitResetPassword();
+  cancel.onclick = closeComposeModal;
 }
  
 // ── submitResetPassword ──────────────────────────────────
-async function submitResetPassword(username) {
-  const input = document.getElementById('reset-pw-input');
-
-  if (!input) {
-    console.error('Input missing — modal probably got re-rendered');
-    toast('UI error. Reopen modal.', 'error');
+async function submitResetPassword() {
+  if (!resetPwState?.input || !resetPwState?.btn) {
+    toast('UI broken. Reopen modal.', 'error');
     return;
   }
+
+  const { username, input, btn } = resetPwState;
 
   const password = input.value.trim();
 
@@ -863,7 +869,6 @@ async function submitResetPassword(username) {
     return;
   }
 
-  const btn = document.getElementById('reset-pw-btn');
   setLoading(btn, true);
 
   try {
@@ -874,6 +879,7 @@ async function submitResetPassword(username) {
     toast(e.message || 'Could not reset password', 'error');
   } finally {
     setLoading(btn, false);
+    resetPwState = null;
   }
 }
 
@@ -1136,46 +1142,74 @@ function clearUpload() {
 }
 
 async function handleUpload() {
-  if (!state.uploadFile) { toast('Please select a file', 'error'); return; }
+  if (!state.uploadFile) {
+    toast('Please select a file', 'error');
+    return;
+  }
+
   const btn = document.getElementById('upload-btn');
   const progressEl = document.getElementById('upload-progress');
   const statusEl = document.getElementById('upload-status');
   const fillEl = document.getElementById('progress-fill');
+  const descEl = document.getElementById('upload-desc');
+
+  if (!btn || !progressEl || !statusEl || !fillEl || !descEl) {
+    console.error('Upload UI missing (view changed?)');
+    return;
+  }
+
   setLoading(btn, true);
   progressEl.classList.remove('hidden');
+
   let prog = 0;
   const interval = setInterval(() => {
     prog = Math.min(prog + Math.random() * 15, 90);
-    fillEl.style.width = prog + '%';
+
+    if (fillEl) {
+      fillEl.style.width = prog + '%';
+    }
   }, 200);
+
   try {
     const formData = new FormData();
     formData.append('file', state.uploadFile);
-    formData.append('description', document.getElementById('upload-desc').value);
+    formData.append('description', descEl.value);
+
     const res = await fetch(`${API}/files/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${state.token}` },
       body: formData,
     });
+
     const data = await res.json();
+
     if (!res.ok) throw new Error(data.error || 'Upload failed');
+
     clearInterval(interval);
-    fillEl.style.width = '100%';
-    statusEl.textContent = 'Upload complete! ✓';
+
+    if (fillEl) fillEl.style.width = '100%';
+    if (statusEl) statusEl.textContent = 'Upload complete! ✓';
+
     if (state.user) {
       state.user.uploads = (state.user.uploads || 0) + 1;
       state.user.totalSize = (state.user.totalSize || 0) + state.uploadFile.size;
       localStorage.setItem('delta_user', JSON.stringify(state.user));
     }
+
     toast('File uploaded successfully! 🎉', 'success');
+
     setTimeout(() => navigate('my-files'), 1000);
+
   } catch (e) {
     clearInterval(interval);
+
+    if (fillEl) fillEl.style.width = '0%';
+    if (progressEl) progressEl.classList.add('hidden');
+
     toast(e.message || 'Upload failed', 'error');
-    fillEl.style.width = '0%';
-    progressEl.classList.add('hidden');
+
   } finally {
-    setLoading(btn, false);
+    if (btn) setLoading(btn, false);
   }
 }
 
@@ -1603,6 +1637,16 @@ function toggleTheme() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getAvatar(user) { return `${API}/avatar/${encodeURIComponent(user)}`; }
 function requireSignIn() { return `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Sign in required</h3><p>Please sign in to access this page.</p><button class="btn btn-primary" onclick="openAuthModal('login')">Sign in</button></div>`; }
+
+function safeValue(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    console.error(`Missing element: ${id}`);
+    toast('UI error (missing field)', 'error');
+    return null;
+  }
+  return el.value;
+}
 
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
