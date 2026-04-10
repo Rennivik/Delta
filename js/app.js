@@ -1627,12 +1627,36 @@ async function api(method, path, body) {
 }
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
+function updateThemeIcon(theme) {
+  const btn = document.getElementById("theme-toggle");
+
+  if (!btn) return;
+
+  if (theme === "dark") {
+    btn.innerHTML = "🌤 Toggle Theme";
+  } else {
+    btn.innerHTML = "🌑 Toggle Theme";
+  }
+}
+
 function toggleTheme() {
   const html = document.documentElement;
-  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-  localStorage.setItem('delta_theme', html.getAttribute('data-theme'));
+
+  const newTheme =
+    html.getAttribute("data-theme") === "dark" ? "light" : "dark";
+
+  html.setAttribute("data-theme", newTheme);
+  localStorage.setItem("delta_theme", newTheme);
+
+  updateThemeIcon(newTheme);
 }
-(() => { document.documentElement.setAttribute('data-theme', localStorage.getItem('delta_theme') || 'dark'); })();
+(() => {
+  const saved = localStorage.getItem("delta_theme") || "dark";
+
+  document.documentElement.setAttribute("data-theme", saved);
+
+  updateThemeIcon(saved);
+})();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getAvatar(user) { return `${API}/avatar/${encodeURIComponent(user)}`; }
@@ -1657,6 +1681,7 @@ function formatBytes(bytes) {
 
 function timeAgo(iso) {
   if (!iso) return '';
+  
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';

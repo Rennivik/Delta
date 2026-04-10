@@ -48,13 +48,13 @@
       z-index: 2;
     }
 
-    h1 {
+    /* h1 {
       font-size: 120px;
       font-weight: 800;
       letter-spacing: 5px;
       color: #ff4d4d;
       margin-bottom: 10px;
-    }
+    } */
 
     h2 {
       font-size: 28px;
@@ -99,6 +99,20 @@
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-10px); }
     }
+
+    .text {
+      font-size: 80px;
+      font-weight: bold;
+      color: #ff4d4d;
+      
+      text-shadow:
+          1px 1px 0 #cc0000,
+          2px 2px 0 #b30000,
+          3px 3px 0 #990000,
+          4px 4px 0 #800000,
+          5px 5px 0 #660000,
+          6px 6px 0 #4d0000;
+    }
   </style>
 </head>
 
@@ -141,7 +155,7 @@
       <div class="ghost">👻</div>
     </div>
 
-    <h1>! 404 !</h1>
+    <h1 class="text">! 404 !</h1>
     <h2>Page Not Found</h2>
 
     <p>
