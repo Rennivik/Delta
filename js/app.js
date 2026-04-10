@@ -1,8 +1,6 @@
-// ── Config ────────────────────────────────────────────────────────────────────
 const API = 'https://delta-server-vyed.onrender.com';
 const ADMIN_USER = 'Rennivik';
 
-// ── State ─────────────────────────────────────────────────────────────────────
 let state = {
   user: null,
   token: null,
@@ -21,7 +19,6 @@ let state = {
 
 const AVATAR_SEEDS = ['alpha','beta','gamma','delta','echo','foxtrot','golf','hotel','india','juliet','kilo','lima'];
 
-// ── API Wake-up / Loading Screen ──────────────────────────────────────────────
 async function waitForAPI() {
   const overlay = document.getElementById('wake-overlay');
   const statusEl = document.getElementById('wake-status');
@@ -35,7 +32,6 @@ async function waitForAPI() {
     if (dotsEl) dotsEl.textContent = '.'.repeat(dotCount);
   }, 400);
 
-  // Animate bar slowly while waiting
   let barProg = 0;
   const barInterval = setInterval(() => {
     barProg = Math.min(barProg + (Math.random() * 3), 85);
@@ -53,7 +49,6 @@ async function waitForAPI() {
         if (barEl) barEl.style.width = '100%';
         if (dotsEl) dotsEl.textContent = '';
         await new Promise(r => setTimeout(r, 500));
-        // Fade out overlay
         if (overlay) {
           overlay.style.transition = 'opacity 0.4s ease';
           overlay.style.opacity = '0';
@@ -65,25 +60,15 @@ async function waitForAPI() {
       }
     } catch {}
 
-    const messages = [
-      'Waking up the server',
-      'Still warming up',
-      'Almost there',
-      'Hang tight',
-      'Nearly ready',
-    ];
+    const messages = ['Waking up the server','Still warming up','Almost there','Hang tight','Nearly ready'];
     const msg = messages[Math.min(Math.floor(attempts / 3), messages.length - 1)];
     if (statusEl) statusEl.textContent = msg;
-
     await new Promise(r => setTimeout(r, 2000));
   }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  // Show wake screen and wait for API before doing anything
   await waitForAPI();
-
   loadAuth();
   renderNavActions();
   navigate('home');
@@ -92,8 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   buildAvatarPicker();
   initPasswordStrength();
   preloadFiles();
-
-  // Poll unread messages every 30s if logged in
   setInterval(() => { if (state.user) refreshUnreadCount(); }, 30000);
 });
 
@@ -124,7 +107,6 @@ function updateInboxBadge() {
   }
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
 function loadAuth() {
   const token = localStorage.getItem('delta_token');
   const user = localStorage.getItem('delta_user');
@@ -150,7 +132,7 @@ async function handleLogin() {
     closeAuthModal();
     renderNavActions();
     refreshUnreadCount();
-    toast(`Welcome back, ${res.user.username}! 👋`, 'success');
+    toast(`Welcome back, ${res.user.username}!`, 'success');
     navigate('home');
   } catch (e) {
     toast(e.message || 'Login failed', 'error');
@@ -168,11 +150,10 @@ async function handleRegister() {
   const btn = document.querySelector('#register-form .btn-primary');
   setLoading(btn, true);
   try {
-    const res = await api('POST', '/auth/register', { username, password, avatar });
+    await api('POST', '/auth/register', { username, password, avatar });
     closeAuthModal();
-    // Show pending message
     showPendingNotice(username);
-    toast(`Account request submitted! Waiting for admin approval.`, 'info', 6000);
+    toast('Account request submitted! Waiting for admin approval.', 'info', 6000);
   } catch (e) {
     toast(e.message || 'Registration failed', 'error');
   } finally {
@@ -188,10 +169,10 @@ function showPendingNotice(username) {
       <h3>Account pending approval</h3>
       <p style="max-width:360px;margin:0 auto 20px;">
         Your account request for <strong>${escapeHtml(username)}</strong> has been submitted.
-        The admin will review it shortly — you'll receive a notification once approved.
+        The admin will review it shortly.
       </p>
-      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:16px 20px;max-width:360px;margin:0 auto;text-align:left;">
-        <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">What happens next</div>
+      <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;max-width:360px;margin:0 auto;text-align:left;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">What happens next</div>
         <div style="font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:6px;">
           <div>1. Admin reviews your request</div>
           <div>2. You get approved or denied</div>
@@ -228,7 +209,6 @@ function openAuthModal(mode = 'login') {
 }
 function closeAuthModal() { document.getElementById('auth-modal').classList.add('hidden'); }
 
-// ── Nav ───────────────────────────────────────────────────────────────────────
 function renderNavActions() {
   const el = document.getElementById('nav-actions');
   if (state.user) {
@@ -238,7 +218,7 @@ function renderNavActions() {
         Upload
       </button>
       <button class="btn btn-ghost btn-icon" onclick="navigate('inbox')" title="Inbox" style="position:relative;">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M0 4.75C0 3.784.784 3 1.75 3h12.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25ZM8 9.5l-4.5-3h9Z"/></svg>
+        <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M0 4.75C0 3.784.784 3 1.75 3h12.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25ZM8 9.5l-4.5-3h9Z"/></svg>
         <span id="inbox-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center;"></span>
       </button>
       <div class="nav-divider"></div>
@@ -246,7 +226,7 @@ function renderNavActions() {
         <div onclick="toggleDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
           <img src="${state.user.avatar}" class="nav-avatar" alt="${state.user.username}" />
           <span class="nav-username">${state.user.username}</span>
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" style="color:var(--text-muted)"><path d="M4.427 7.427l3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z"/></svg>
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor" style="color:var(--text-muted)"><path d="M4.427 7.427l3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z"/></svg>
         </div>
         <div class="dropdown-menu hidden" id="user-dropdown-menu">
           <div class="dropdown-header">Signed in as <strong>${state.user.username}</strong></div>
@@ -294,7 +274,6 @@ function toggleDropdown() { document.getElementById('user-dropdown-menu')?.class
 function closeDropdown() { document.getElementById('user-dropdown-menu')?.classList.add('hidden'); }
 document.addEventListener('click', e => { if (!e.target.closest('#user-dropdown')) closeDropdown(); });
 
-// ── Navigation ────────────────────────────────────────────────────────────────
 function navigate(view) {
   state.currentView = view;
   document.querySelectorAll('.sidebar-item').forEach(el => {
@@ -312,7 +291,6 @@ function navigate(view) {
   }
 }
 
-// ── Views ─────────────────────────────────────────────────────────────────────
 async function renderHome(el) {
   el.innerHTML = state.user ? renderDashboard() : renderLanding();
   if (state.user) { loadStats(); loadRecentFiles('recent-files-list'); }
@@ -323,21 +301,21 @@ function renderLanding() {
   return `
     <div class="hero">
       <div class="hero-badge">
-        <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8 .25a7.75 7.75 0 1 0 0 15.5A7.75 7.75 0 0 0 8 .25Z"/></svg>
-        Open file sharing platform
+        <svg viewBox="0 0 16 16" width="11" height="11" fill="currentColor"><path d="M8 .25a7.75 7.75 0 1 0 0 15.5A7.75 7.75 0 0 0 8 .25Z"/></svg>
+        open file sharing platform
       </div>
-      <h1>Share files with anyone</h1>
-      <p>Delta is a file sharing platform built with GitHub. Upload, manage, and share files with a user friendly interface.</p>
+      <h1>Share files with <em>anyone</em></h1>
+      <p>Delta is a file sharing platform built with GitHub. Upload, manage, and share files with a clean interface.</p>
       <div class="hero-actions">
         <button class="btn btn-primary" onclick="openAuthModal('register')">
           <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Z"/></svg>
-          Get started free
+          Get started
         </button>
         <button class="btn btn-secondary" onclick="navigate('explore')">Browse files</button>
       </div>
     </div>
     <div class="stats-grid" id="platform-stats">
-      ${['📁','👤','⬆️'].map(i=>`<div class="stat-card"><div class="stat-icon">${i}</div><div class="skeleton" style="height:32px;width:80px;margin-bottom:4px;border-radius:4px;"></div><div class="skeleton" style="height:14px;width:120px;border-radius:4px;"></div></div>`).join('')}
+      ${['📁','👤','⬆️'].map(i=>`<div class="stat-card"><div class="stat-icon">${i}</div><div class="skeleton" style="height:28px;width:80px;margin-bottom:4px;border-radius:4px;"></div><div class="skeleton" style="height:13px;width:120px;border-radius:4px;"></div></div>`).join('')}
     </div>
     <div class="section-header"><h2>Featured files</h2><button class="btn btn-ghost btn-sm" onclick="navigate('explore')">Browse all →</button></div>
     <div class="card"><div id="featured-files" class="file-list">${skeletonRows(5)}</div></div>
@@ -346,21 +324,21 @@ function renderLanding() {
 
 function renderDashboard() {
   return `
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-      <img src="${state.user.avatar}" style="width:48px;height:48px;border-radius:50%;border:2px solid var(--border);" />
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;">
+      <img src="${state.user.avatar}" style="width:46px;height:46px;border-radius:50%;border:1.5px solid var(--border);" />
       <div>
-        <h1 style="font-size:20px;font-weight:700;">Good ${getGreeting()}, ${state.user.username} 👋</h1>
-        <p style="color:var(--text-secondary);font-size:13px;">Here's what's happening with your files.</p>
+        <h1 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-0.03em;">Good ${getGreeting()}, ${state.user.username}</h1>
+        <p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Here's what's happening with your files.</p>
       </div>
     </div>
     <div class="stats-grid" id="user-stats">${skeletonStats(3)}</div>
     <div class="section-header" style="margin-top:8px;">
-      <h2>Your recent files</h2>
+      <h2>Recent files</h2>
       <button class="btn btn-ghost btn-sm" onclick="navigate('my-files')">View all →</button>
     </div>
     <div class="card"><div id="recent-files-list" class="file-list">${skeletonRows(3)}</div></div>
-    <div class="section-header" style="margin-top:24px;"><h2>Quick actions</h2></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+    <div class="section-header" style="margin-top:28px;"><h2>Quick actions</h2></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
       ${quickAction('📤','Upload a file','Share something new','navigate(\'upload\')')}
       ${quickAction('🔍','Explore files','See what others shared','navigate(\'explore\')')}
       ${quickAction('✉️','Inbox','Check your messages','navigate(\'inbox\')')}
@@ -372,12 +350,12 @@ function renderDashboard() {
 function quickAction(icon, title, desc, onclick) {
   return `
     <div class="card" style="cursor:pointer;transition:border-color .15s,transform .15s;" onclick="${onclick}"
-      onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)'"
+      onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-2px)'"
       onmouseout="this.style.borderColor='';this.style.transform=''">
       <div class="card-body" style="display:flex;align-items:flex-start;gap:12px;">
-        <div style="font-size:24px;">${icon}</div>
+        <div style="font-size:22px;">${icon}</div>
         <div>
-          <div style="font-weight:600;font-size:13px;margin-bottom:2px;">${title}</div>
+          <div style="font-weight:500;font-size:13px;margin-bottom:2px;">${title}</div>
           <div style="font-size:12px;color:var(--text-muted);">${desc}</div>
         </div>
       </div>
@@ -400,7 +378,7 @@ async function renderExplore(el) {
         <div class="filter-chip ${state.currentFilter===f?'active':''}" onclick="setFilter('${f}')">${filterLabel(f)}</div>
       `).join('')}
       <div class="spacer"></div>
-      <select onchange="setSort(this.value)" style="font-size:12px;padding:4px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);cursor:pointer;">
+      <select onchange="setSort(this.value)" style="font-size:12px;padding:5px 10px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-primary);cursor:pointer;font-family:'DM Sans',sans-serif;">
         <option value="newest" ${state.currentSort==='newest'?'selected':''}>Newest</option>
         <option value="oldest" ${state.currentSort==='oldest'?'selected':''}>Oldest</option>
         <option value="largest" ${state.currentSort==='largest'?'selected':''}>Largest</option>
@@ -458,8 +436,8 @@ async function renderUpload(el) {
         <h3>Drop files here or click to browse</h3>
         <p>Supports any file type · Max 50 MB</p>
       </div>
-      <div id="upload-file-preview" class="hidden" style="margin-top:16px;"></div>
-      <div id="upload-form-fields" class="hidden upload-form" style="margin-top:20px;">
+      <div id="upload-file-preview" class="hidden" style="margin-top:14px;"></div>
+      <div id="upload-form-fields" class="hidden upload-form" style="margin-top:18px;">
         <div class="form-group">
           <label>Description <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
           <textarea id="upload-desc" placeholder="What's this file? Add a description…" rows="2"></textarea>
@@ -480,7 +458,6 @@ async function renderUpload(el) {
   `;
 }
 
-// ── Inbox View ────────────────────────────────────────────────────────────────
 async function renderInbox(el) {
   if (!state.user) { el.innerHTML = requireSignIn(); return; }
   el.innerHTML = `
@@ -506,38 +483,34 @@ async function loadInbox() {
     const res = await api('GET', '/messages');
     const el = document.getElementById('inbox-list');
     if (!el) return;
-
     if (res.conversations.length === 0) {
       el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✉️</div><h3>No messages yet</h3><p>Your inbox is empty.</p><button class="btn btn-primary" onclick="openComposeModal()">Send a message</button></div>`;
       return;
     }
-
     el.innerHTML = res.conversations.map(conv => {
       const isSystem = conv.with === 'delta-system';
       const avatar = isSystem
-        ? `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent-bg);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">Δ</div>`
+        ? `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent-bg);border:1px solid rgba(233,150,122,0.3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:14px;color:var(--accent);flex-shrink:0;">Δ</div>`
         : `<img src="${getAvatar(conv.with)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />`;
       const unreadDot = conv.unreadCount > 0
-        ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:6px;flex-shrink:0;"></span>`
+        ? `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:6px;flex-shrink:0;"></span>`
         : '';
       const preview = conv.lastMessage?.body?.slice(0, 80) || '';
       const timeStr = timeAgo(conv.lastMessage?.sentAt);
-
       return `
         <div class="file-item" onclick="openConversation('${escapeHtml(conv.with)}')" style="grid-template-columns:44px 1fr auto;">
           ${avatar}
           <div style="min-width:0;">
             <div style="display:flex;align-items:center;gap:4px;">
-              <span style="font-weight:${conv.unreadCount > 0 ? '700' : '500'};font-size:13px;">${isSystem ? 'Delta System' : escapeHtml(conv.with)}</span>
+              <span style="font-weight:${conv.unreadCount > 0 ? '600' : '500'};font-size:13px;">${isSystem ? 'Delta System' : escapeHtml(conv.with)}</span>
               ${unreadDot}
             </div>
             <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(preview)}</div>
           </div>
-          <div style="font-size:11px;color:var(--text-muted);flex-shrink:0;">${timeStr}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);flex-shrink:0;">${timeStr}</div>
         </div>
       `;
     }).join('');
-
     state.unreadCount = res.conversations.reduce((a, c) => a + c.unreadCount, 0);
     updateInboxBadge();
   } catch (e) {
@@ -557,16 +530,16 @@ function openConversation(withUser) {
       <span class="breadcrumb-sep">/</span>
       <span class="breadcrumb-item active">${isSystem ? 'Delta System' : escapeHtml(withUser)}</span>
     </div>
-    <div class="card" style="margin-bottom:16px;">
+    <div class="card" style="margin-bottom:14px;">
       <div class="card-header" style="gap:10px;">
         ${isSystem
-          ? `<div style="width:32px;height:32px;border-radius:50%;background:var(--accent-bg);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;">Δ</div>`
-          : `<img src="${getAvatar(withUser)}" style="width:32px;height:32px;border-radius:50%;" />`
+          ? `<div style="width:30px;height:30px;border-radius:50%;background:var(--accent-bg);border:1px solid rgba(233,150,122,0.3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;color:var(--accent);">Δ</div>`
+          : `<img src="${getAvatar(withUser)}" style="width:30px;height:30px;border-radius:50%;" />`
         }
         <h3>${isSystem ? 'Delta System' : escapeHtml(withUser)}</h3>
         ${!isSystem ? `<button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="deleteConversation('${escapeHtml(withUser)}')">Delete</button>` : ''}
       </div>
-      <div id="conv-messages" style="padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px;max-height:480px;overflow-y:auto;">
+      <div id="conv-messages" style="padding:16px;display:flex;flex-direction:column;gap:10px;min-height:200px;max-height:480px;overflow-y:auto;">
         ${skeletonRows(3)}
       </div>
     </div>
@@ -586,42 +559,34 @@ async function loadConversation(withUser) {
     const res = await api('GET', `/messages/${encodeURIComponent(withUser)}`);
     const el = document.getElementById('conv-messages');
     if (!el) return;
-
     const me = state.user.username;
     if (res.messages.length === 0) {
       el.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:20px;">No messages yet. Say hello!</div>`;
       return;
     }
-
     el.innerHTML = res.messages.map(msg => {
       const isMine = msg.from === me;
       const isSystem = msg.from === 'delta-system';
       const formattedBody = escapeHtml(msg.body).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-
       if (isSystem) {
         return `
-          <div style="background:var(--accent-bg);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;margin:4px 0;">
-            ${msg.subject ? `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escapeHtml(msg.subject)}</div>` : ''}
+          <div style="background:var(--accent-bg);border:1px solid rgba(233,150,122,0.25);border-radius:var(--radius-lg);padding:12px 16px;margin:4px 0;">
+            ${msg.subject ? `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;margin-bottom:4px;">${escapeHtml(msg.subject)}</div>` : ''}
             <div style="font-size:13px;color:var(--text-primary);">${formattedBody}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">${timeAgo(msg.sentAt)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:6px;">${timeAgo(msg.sentAt)}</div>
           </div>
         `;
       }
-
       return `
         <div style="display:flex;flex-direction:column;align-items:${isMine ? 'flex-end' : 'flex-start'};">
           <div style="max-width:75%;background:${isMine ? 'var(--accent)' : 'var(--bg-tertiary)'};color:${isMine ? '#fff' : 'var(--text-primary)'};border-radius:${isMine ? '12px 12px 4px 12px' : '12px 12px 12px 4px'};padding:10px 14px;font-size:13px;">
             ${formattedBody}
           </div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${timeAgo(msg.sentAt)}</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:3px;">${timeAgo(msg.sentAt)}</div>
         </div>
       `;
     }).join('');
-
-    // Scroll to bottom
     el.scrollTop = el.scrollHeight;
-
-    // Update unread count
     refreshUnreadCount();
   } catch (e) {
     const el = document.getElementById('conv-messages');
@@ -651,19 +616,16 @@ async function deleteConversation(withUser) {
   } catch (e) { toast(e.message || 'Could not delete', 'error'); }
 }
 
-// Compose Modal
 function openComposeModal() {
   document.getElementById('compose-modal').classList.remove('hidden');
   document.getElementById('compose-to').focus();
 }
- 
+
 function closeComposeModal() {
   const modal = document.getElementById('compose-modal');
   if (modal) modal.classList.add('hidden');
-
   const to = document.getElementById('compose-to');
   const body = document.getElementById('compose-body');
-
   if (to) to.value = '';
   if (body) body.value = '';
 }
@@ -686,13 +648,11 @@ async function sendCompose() {
   }
 }
 
-// ── Admin View ────────────────────────────────────────────────────────────────
 async function renderAdmin(el) {
   if (!state.user || state.user.username !== ADMIN_USER) {
     el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Access denied</h3></div>`;
     return;
   }
- 
   el.innerHTML = `
     <div class="breadcrumb">
       <span class="breadcrumb-item" onclick="navigate('home')">Home</span>
@@ -702,27 +662,23 @@ async function renderAdmin(el) {
     <div class="section-header">
       <div><h2>Admin Panel</h2><p style="color:var(--text-secondary);font-size:13px;margin-top:2px;">Manage users and approvals</p></div>
     </div>
- 
     <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;">
       <button class="btn btn-ghost btn-sm" id="tab-btn-pending" onclick="switchAdminTab('pending')"
         style="border-bottom:2px solid var(--accent);border-radius:0;padding-bottom:10px;">
-        ⏳ Pending Approvals
+        Pending Approvals
       </button>
       <button class="btn btn-ghost btn-sm" id="tab-btn-users" onclick="switchAdminTab('users')"
         style="border-bottom:2px solid transparent;border-radius:0;padding-bottom:10px;">
-        👥 User Management
+        User Management
       </button>
     </div>
- 
     <div id="admin-tab-pending">
       <div class="card" id="pending-list"><div style="padding:20px;">${skeletonRows(2)}</div></div>
     </div>
- 
     <div id="admin-tab-users" class="hidden">
       <div class="card" id="users-list"><div style="padding:20px;">${skeletonRows(3)}</div></div>
     </div>
   `;
- 
   loadPendingAccounts();
   loadAdminUsers();
 }
@@ -732,12 +688,10 @@ async function loadPendingAccounts() {
     const res = await api('GET', '/admin/pending');
     const el = document.getElementById('pending-list');
     if (!el) return;
- 
     if (res.pending.length === 0) {
       el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">✅</div><h3>No pending approvals</h3><p>All accounts are up to date.</p></div>`;
       return;
     }
- 
     el.innerHTML = `
       <div class="card-header"><h3>Pending accounts (${res.pending.length})</h3></div>
       ${res.pending.map(u => `
@@ -745,11 +699,11 @@ async function loadPendingAccounts() {
           <img src="${escapeHtml(u.avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" />
           <div>
             <div style="font-weight:600;font-size:13px;">${escapeHtml(u.username)}</div>
-            <div style="font-size:12px;color:var(--text-muted);">Requested ${timeAgo(u.createdAt)}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">Requested ${timeAgo(u.createdAt)}</div>
           </div>
           <div style="display:flex;gap:6px;">
-            <button class="btn btn-primary btn-sm" onclick="approveAccount('${escapeHtml(u.username)}')">✓ Approve</button>
-            <button class="btn btn-danger btn-sm" onclick="denyAccount('${escapeHtml(u.username)}')">✗ Deny</button>
+            <button class="btn btn-primary btn-sm" onclick="approveAccount('${escapeHtml(u.username)}')">Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="denyAccount('${escapeHtml(u.username)}')">Deny</button>
           </div>
         </div>
       `).join('')}
@@ -760,7 +714,6 @@ async function loadPendingAccounts() {
   }
 }
 
-// ── switchAdminTab ───────────────────────────────────────
 function switchAdminTab(tab) {
   const isPending = tab === 'pending';
   document.getElementById('admin-tab-pending').classList.toggle('hidden', !isPending);
@@ -769,18 +722,15 @@ function switchAdminTab(tab) {
   document.getElementById('tab-btn-users').style.borderBottomColor = !isPending ? 'var(--accent)' : 'transparent';
 }
 
-// ── loadAdminUsers ───────────────────────────────────────
 async function loadAdminUsers() {
   try {
     const res = await api('GET', '/admin/users');
     const el = document.getElementById('users-list');
     if (!el) return;
- 
     if (res.users.length === 0) {
       el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No users yet</h3></div>`;
       return;
     }
- 
     el.innerHTML = `
       <div class="card-header"><h3>All users (${res.users.length})</h3></div>
       ${res.users.map(u => {
@@ -790,18 +740,18 @@ async function loadAdminUsers() {
             <img src="${escapeHtml(u.avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
             <div style="min-width:0;">
               <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-weight:600;font-size:13px;">${escapeHtml(u.username)}</span>
-                ${isAdmin ? `<span style="font-size:10px;font-weight:700;background:var(--warning);color:#000;border-radius:4px;padding:1px 5px;">ADMIN</span>` : ''}
+                <span style="font-weight:500;font-size:13px;">${escapeHtml(u.username)}</span>
+                ${isAdmin ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;background:var(--warning-bg);color:var(--warning);border-radius:4px;padding:1px 6px;">admin</span>` : ''}
               </div>
-              <div style="font-size:12px;color:var(--text-muted);">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">
                 ${u.uploads || 0} files · ${formatBytes(u.totalSize || 0)} · joined ${timeAgo(u.createdAt)}
               </div>
             </div>
             ${isAdmin
               ? `<div style="font-size:12px;color:var(--text-muted);padding-right:4px;">Protected</div>`
               : `<div style="display:flex;gap:6px;flex-shrink:0;">
-                  <button class="btn btn-secondary btn-sm" onclick="openResetPasswordModal('${escapeHtml(u.username)}')">🔑 Reset PW</button>
-                  <button class="btn btn-danger btn-sm" onclick="adminDeleteUser('${escapeHtml(u.username)}')">🗑 Delete</button>
+                  <button class="btn btn-secondary btn-sm" onclick="openResetPasswordModal('${escapeHtml(u.username)}')">Reset PW</button>
+                  <button class="btn btn-danger btn-sm" onclick="adminDeleteUser('${escapeHtml(u.username)}')">Delete</button>
                 </div>`
             }
           </div>
@@ -814,67 +764,45 @@ async function loadAdminUsers() {
   }
 }
 
-// ── openResetPasswordModal ───────────────────────────────
 let resetPwState = null;
 
 function openResetPasswordModal(username) {
   const modal = document.getElementById('compose-modal');
   const inner = document.getElementById('compose-modal-inner');
-
   if (!modal || !inner) return;
-
   inner.innerHTML = `
     <div class="modal-header">
       <h2>Reset Password</h2>
       <p>Set a new password for <strong>${escapeHtml(username)}</strong></p>
     </div>
-
     <div style="display:flex;flex-direction:column;gap:14px;">
       <input type="password" id="reset-pw-input" placeholder="at least 6 characters" />
-
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" id="reset-pw-btn">Set password</button>
         <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
       </div>
     </div>
   `;
-
   modal.classList.remove('hidden');
-
   const input = inner.querySelector('#reset-pw-input');
   const btn = inner.querySelector('#reset-pw-btn');
   const cancel = inner.querySelector('#cancel-btn');
-
   resetPwState = { username, input, btn };
-
   input.focus();
-
   btn.onclick = () => submitResetPassword();
   cancel.onclick = closeComposeModal;
 }
- 
-// ── submitResetPassword ──────────────────────────────────
+
 async function submitResetPassword() {
-  if (!resetPwState?.input || !resetPwState?.btn) {
-    toast('UI broken. Reopen modal.', 'error');
-    return;
-  }
-
+  if (!resetPwState?.input || !resetPwState?.btn) { toast('UI broken. Reopen modal.', 'error'); return; }
   const { username, input, btn } = resetPwState;
-
   const password = input.value.trim();
-
-  if (password.length < 6) {
-    toast('Password must be at least 6 characters', 'error');
-    return;
-  }
-
+  if (password.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
   setLoading(btn, true);
-
   try {
     await api('POST', `/admin/users/${encodeURIComponent(username)}/password`, { password });
     closeComposeModal();
-    toast(`Password reset for ${username} ✓`, 'success');
+    toast(`Password reset for ${username}`, 'success');
   } catch (e) {
     toast(e.message || 'Could not reset password', 'error');
   } finally {
@@ -895,7 +823,7 @@ async function adminDeleteUser(username) {
 async function approveAccount(username) {
   try {
     await api('POST', `/admin/approve/${encodeURIComponent(username)}`);
-    toast(`${username} approved! They can now sign in.`, 'success');
+    toast(`${username} approved!`, 'success');
     loadPendingAccounts();
     loadAdminUsers();
   } catch (e) { toast(e.message || 'Could not approve', 'error'); }
@@ -910,7 +838,6 @@ async function denyAccount(username) {
   } catch (e) { toast(e.message || 'Could not deny', 'error'); }
 }
 
-// ── File Loading ──────────────────────────────────────────────────────────────
 async function loadExploreFiles(containerId, limit = 50) {
   try {
     const res = await api('GET', '/files');
@@ -982,7 +909,6 @@ function statCard(icon, value, label) {
   return `<div class="stat-card"><div class="stat-icon">${icon}</div><div class="stat-number">${value}</div><div class="stat-label">${label}</div></div>`;
 }
 
-// ── File Rendering ────────────────────────────────────────────────────────────
 function renderFileRow(f, showDelete = false) {
   if (f.name === '.gitkeep') return '';
   const uploader = f.uploader || 'unknown';
@@ -1041,7 +967,6 @@ function renderFileCard(f) {
   `;
 }
 
-// ── File Actions ──────────────────────────────────────────────────────────────
 function openPreview(name, url, ext) {
   const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
   const isPdf = ext === 'pdf';
@@ -1049,11 +974,11 @@ function openPreview(name, url, ext) {
   document.getElementById('preview-modal').classList.remove('hidden');
   const content = document.getElementById('preview-modal-content');
   content.innerHTML = `
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
-      <div style="font-size:24px;">${getFileIcon(ext)}</div>
+    <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;">
+      <div style="font-size:22px;">${getFileIcon(ext)}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${decodeURIComponent(name)}</div>
-        <div style="font-size:12px;color:var(--text-muted);">.${ext || 'file'}</div>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${decodeURIComponent(name)}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">.${ext || 'file'}</div>
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;">
         <button class="btn btn-secondary btn-sm" onclick="copyLink('${url}')">Copy link</button>
@@ -1061,12 +986,12 @@ function openPreview(name, url, ext) {
       </div>
     </div>
     <div style="padding:20px;min-height:200px;display:flex;align-items:center;justify-content:center;">
-      ${isImage ? `<img src="${url}" style="max-width:100%;max-height:60vh;object-fit:contain;border-radius:4px;" />` :
-        isPdf ? `<iframe src="${url}" style="width:100%;height:60vh;border:none;border-radius:4px;"></iframe>` :
+      ${isImage ? `<img src="${url}" style="max-width:100%;max-height:60vh;object-fit:contain;border-radius:var(--radius);" />` :
+        isPdf ? `<iframe src="${url}" style="width:100%;height:60vh;border:none;border-radius:var(--radius);"></iframe>` :
         isText ? `<div style="width:100%;"><div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Text preview not available for remote files.</div><a href="${url}" target="_blank" class="btn btn-secondary">Open in new tab</a></div>` :
         `<div style="text-align:center;padding:40px;">
-          <div style="font-size:56px;margin-bottom:16px;">${getFileIcon(ext)}</div>
-          <div style="font-weight:600;margin-bottom:8px;">No preview available</div>
+          <div style="font-size:52px;margin-bottom:16px;">${getFileIcon(ext)}</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:8px;">No preview available</div>
           <div style="color:var(--text-secondary);font-size:13px;margin-bottom:20px;">This file type cannot be previewed in the browser.</div>
           <a class="btn btn-primary" href="${url}" download target="_blank">Download file</a>
         </div>`
@@ -1089,7 +1014,7 @@ async function downloadFile(name, url) {
 
 function copyLink(url) {
   navigator.clipboard.writeText(url || window.location.href).then(() => {
-    toast('Link copied to clipboard! 📋', 'success');
+    toast('Link copied to clipboard!', 'success');
   });
 }
 
@@ -1102,7 +1027,6 @@ async function deleteFile(name) {
   } catch (e) { toast(e.message || 'Could not delete file', 'error'); }
 }
 
-// ── Upload ────────────────────────────────────────────────────────────────────
 function handleFileSelect(e) { const file = e.target.files[0]; if (file) setUploadFile(file); }
 function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag-over'); }
 function handleDragLeave() { document.getElementById('upload-zone').classList.remove('drag-over'); }
@@ -1142,78 +1066,51 @@ function clearUpload() {
 }
 
 async function handleUpload() {
-  if (!state.uploadFile) {
-    toast('Please select a file', 'error');
-    return;
-  }
-
+  if (!state.uploadFile) { toast('Please select a file', 'error'); return; }
   const btn = document.getElementById('upload-btn');
   const progressEl = document.getElementById('upload-progress');
   const statusEl = document.getElementById('upload-status');
   const fillEl = document.getElementById('progress-fill');
   const descEl = document.getElementById('upload-desc');
-
-  if (!btn || !progressEl || !statusEl || !fillEl || !descEl) {
-    console.error('Upload UI missing (view changed?)');
-    return;
-  }
-
+  if (!btn || !progressEl || !statusEl || !fillEl || !descEl) { console.error('Upload UI missing'); return; }
   setLoading(btn, true);
   progressEl.classList.remove('hidden');
-
   let prog = 0;
   const interval = setInterval(() => {
     prog = Math.min(prog + Math.random() * 15, 90);
-
-    if (fillEl) {
-      fillEl.style.width = prog + '%';
-    }
+    if (fillEl) fillEl.style.width = prog + '%';
   }, 200);
-
   try {
     const formData = new FormData();
     formData.append('file', state.uploadFile);
     formData.append('description', descEl.value);
-
     const res = await fetch(`${API}/files/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${state.token}` },
       body: formData,
     });
-
     const data = await res.json();
-
     if (!res.ok) throw new Error(data.error || 'Upload failed');
-
     clearInterval(interval);
-
     if (fillEl) fillEl.style.width = '100%';
-    if (statusEl) statusEl.textContent = 'Upload complete! ✓';
-
+    if (statusEl) statusEl.textContent = 'Upload complete!';
     if (state.user) {
       state.user.uploads = (state.user.uploads || 0) + 1;
       state.user.totalSize = (state.user.totalSize || 0) + state.uploadFile.size;
       localStorage.setItem('delta_user', JSON.stringify(state.user));
     }
-
-    toast('File uploaded successfully! 🎉', 'success');
-
+    toast('File uploaded successfully!', 'success');
     setTimeout(() => navigate('my-files'), 1000);
-
   } catch (e) {
     clearInterval(interval);
-
     if (fillEl) fillEl.style.width = '0%';
     if (progressEl) progressEl.classList.add('hidden');
-
     toast(e.message || 'Upload failed', 'error');
-
   } finally {
     if (btn) setLoading(btn, false);
   }
 }
 
-// ── Profile Modal ─────────────────────────────────────────────────────────────
 function openProfileModal() {
   if (!state.user) { openAuthModal('login'); return; }
   closeDropdown();
@@ -1229,7 +1126,7 @@ function renderProfileModalContent() {
       <div class="profile-avatar-wrap">
         <img src="${user.avatar}" class="profile-avatar" id="profile-avatar-img" />
         <div class="profile-avatar-edit" onclick="toggleAvatarPanel()" title="Change avatar">
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="white"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Z"/></svg>
+          <svg viewBox="0 0 16 16" width="11" height="11" fill="white"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Z"/></svg>
         </div>
       </div>
       <div class="profile-info">
@@ -1244,41 +1141,39 @@ function renderProfileModalContent() {
         </div>
       </div>
     </div>
-
     <div id="avatar-panel" class="hidden" style="border-bottom:1px solid var(--border);background:var(--bg-tertiary);">
       <div style="display:flex;border-bottom:1px solid var(--border);">
         <div class="avatar-tab active" id="tab-upload" onclick="switchAvatarTab('upload')"
-          style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);">
-          📁 Upload image
+          style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid var(--accent);color:var(--text-primary);">
+          Upload image
         </div>
         <div class="avatar-tab" id="tab-generated" onclick="switchAvatarTab('generated')"
-          style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">
-          🎨 Generated
+          style="flex:1;text-align:center;padding:10px;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-secondary);">
+          Generated
         </div>
       </div>
       <div id="avatar-tab-upload" style="padding:16px;">
         <div id="avatar-upload-zone"
-          style="border:2px dashed var(--border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;"
+          style="border:1.5px dashed var(--border-hover);border-radius:var(--radius-lg);padding:24px;text-align:center;cursor:pointer;transition:all .2s;"
           onclick="document.getElementById('avatar-file-input').click()"
           ondragover="avatarDragOver(event)" ondragleave="avatarDragLeave(event)" ondrop="avatarDrop(event)">
           <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="handleAvatarFileSelect(event)" />
-          <div style="font-size:28px;margin-bottom:8px;">🖼️</div>
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Drop image here or click to browse</div>
+          <div style="font-size:26px;margin-bottom:8px;">🖼️</div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Drop image here or click to browse</div>
           <div style="font-size:12px;color:var(--text-muted);">JPEG, PNG, GIF, WebP · Max 5 MB</div>
         </div>
         <div id="avatar-upload-preview" class="hidden" style="margin-top:12px;">
-          <div style="display:flex;align-items:center;gap:12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:12px;">
-            <img id="avatar-preview-img" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--border);" />
+          <div style="display:flex;align-items:center;gap:12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:12px;">
+            <img id="avatar-preview-img" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);" />
             <div style="flex:1;min-width:0;">
-              <div id="avatar-preview-name" style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-              <div id="avatar-preview-size" style="font-size:12px;color:var(--text-muted);"></div>
+              <div id="avatar-preview-name" style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+              <div id="avatar-preview-size" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);"></div>
             </div>
             <button class="btn btn-ghost btn-icon btn-sm" onclick="clearAvatarFile()" title="Remove">
               <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
             </button>
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%;justify-content:center;" onclick="uploadCustomAvatar()" id="avatar-upload-btn">
-            <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Z"/></svg>
             Set as profile picture
           </button>
         </div>
@@ -1288,7 +1183,7 @@ function renderProfileModalContent() {
         </div>
       </div>
       <div id="avatar-tab-generated" class="hidden" style="padding:16px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;">Choose a style</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em;">Choose a style</div>
         <div class="avatar-picker" id="profile-avatar-picker-generated">
           ${AVATAR_SEEDS.map(seed => {
             const url = `https://api.dicebear.com/7.x/identicon/svg?seed=${user.username}_${seed}`;
@@ -1304,12 +1199,10 @@ function renderProfileModalContent() {
         </button>
       </div>
     </div>
-
     <div class="profile-stats">
       <div class="profile-stat"><div class="profile-stat-num">${user.uploads || 0}</div><div class="profile-stat-label">Files</div></div>
       <div class="profile-stat"><div class="profile-stat-num">${formatBytes(user.totalSize || 0)}</div><div class="profile-stat-label">Storage</div></div>
     </div>
-
     <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
       <div class="form-group">
         <label>Bio</label>
@@ -1389,7 +1282,7 @@ async function uploadCustomAvatar() {
     localStorage.setItem('delta_user', JSON.stringify(data.user));
     state._pendingAvatarFile = null;
     renderNavActions();
-    toast('Profile picture updated! ✓', 'success');
+    toast('Profile picture updated!', 'success');
     setTimeout(() => renderProfileModalContent(), 400);
   } catch (e) {
     clearInterval(interval);
@@ -1417,7 +1310,7 @@ async function applyGeneratedAvatar() {
     state.user = res.user;
     localStorage.setItem('delta_user', JSON.stringify(res.user));
     renderNavActions();
-    toast('Avatar updated! ✓', 'success');
+    toast('Avatar updated!', 'success');
     delete state._pendingAvatar;
     setTimeout(() => renderProfileModalContent(), 200);
   } catch (e) {
@@ -1435,13 +1328,12 @@ async function saveProfile() {
     localStorage.setItem('delta_user', JSON.stringify(res.user));
     renderNavActions();
     closeProfileModal();
-    toast('Profile updated! ✓', 'success');
+    toast('Profile updated!', 'success');
   } catch (e) { toast(e.message || 'Could not save profile', 'error'); }
 }
 
 function closeProfileModal() { document.getElementById('profile-modal').classList.add('hidden'); }
 
-// ── Filters ───────────────────────────────────────────────────────────────────
 function setFilter(f) { state.currentFilter = f; navigate('explore'); }
 function setSort(s) { state.currentSort = s; navigate('explore'); }
 function setViewMode(m) { state.viewMode = m; navigate('explore'); }
@@ -1470,11 +1362,10 @@ function sortFiles(files) {
 }
 
 function filterLabel(f) {
-  const labels = { all: '🗂 All', images: '🖼 Images', documents: '📄 Docs', code: '💻 Code', archives: '📦 Archives' };
+  const labels = { all: 'All', images: 'Images', documents: 'Docs', code: 'Code', archives: 'Archives' };
   return labels[f] || f;
 }
 
-// ── Command Palette ───────────────────────────────────────────────────────────
 function openCommandPalette() {
   document.getElementById('cmd-palette').classList.remove('hidden');
   document.getElementById('cmd-input').focus();
@@ -1531,7 +1422,6 @@ function updateCmdResults(query) {
   });
 }
 
-// ── Keyboard ──────────────────────────────────────────────────────────────────
 function initKeyboard() {
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -1558,7 +1448,6 @@ function initSearch() {
   input.addEventListener('focus', () => { openCommandPalette(); input.blur(); });
 }
 
-// ── Avatar Picker (Register) ──────────────────────────────────────────────────
 function buildAvatarPicker() {
   const picker = document.getElementById('avatar-picker');
   const styles = ['identicon','bottts','micah','fun-emoji','lorelei','avataaars','pixel-art','thumbs'];
@@ -1575,7 +1464,6 @@ function selectAvatar(url, el) {
   state.selectedAvatar = url;
 }
 
-// ── Password Strength ─────────────────────────────────────────────────────────
 function initPasswordStrength() {
   document.getElementById('reg-password')?.addEventListener('input', e => {
     const val = e.target.value;
@@ -1602,7 +1490,6 @@ function togglePass(id) {
   input.type = input.type === 'password' ? 'text' : 'password';
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
 function toast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -1610,12 +1497,11 @@ function toast(message, type = 'info', duration = 3000) {
   t.innerHTML = `<div class="toast-dot"></div><span>${escapeHtml(message)}</span>`;
   container.appendChild(t);
   setTimeout(() => {
-    t.style.opacity = '0'; t.style.transform = 'translateX(20px)'; t.style.transition = 'all 0.25s';
-    setTimeout(() => t.remove(), 250);
+    t.style.opacity = '0'; t.style.transform = 'translateX(16px)'; t.style.transition = 'all 0.2s';
+    setTimeout(() => t.remove(), 200);
   }, duration);
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (state.token) opts.headers['Authorization'] = `Bearer ${state.token}`;
@@ -1626,49 +1512,35 @@ async function api(method, path, body) {
   return data;
 }
 
-// ── Theme ─────────────────────────────────────────────────────────────────────
 function updateThemeIcon(theme) {
-  const btn = document.getElementById("theme-toggle");
-
+  const btn = document.getElementById('theme-toggle');
   if (!btn) return;
-
-  if (theme === "dark") {
-    btn.innerHTML = "🌤 Toggle Theme";
-  } else {
-    btn.innerHTML = "🌑 Toggle Theme";
-  }
+  const icon = theme === 'dark'
+    ? `<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z"/></svg>`
+    : `<svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0Zm0 13a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13Z"/></svg>`;
+  btn.innerHTML = `${icon} Toggle Theme`;
 }
 
 function toggleTheme() {
   const html = document.documentElement;
-
-  const newTheme =
-    html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-
-  html.setAttribute("data-theme", newTheme);
-  localStorage.setItem("delta_theme", newTheme);
-
+  const newTheme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('delta_theme', newTheme);
   updateThemeIcon(newTheme);
 }
+
 (() => {
-  const saved = localStorage.getItem("delta_theme") || "dark";
-
-  document.documentElement.setAttribute("data-theme", saved);
-
+  const saved = localStorage.getItem('delta_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
   updateThemeIcon(saved);
 })();
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function getAvatar(user) { return `${API}/avatar/${encodeURIComponent(user)}`; }
 function requireSignIn() { return `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Sign in required</h3><p>Please sign in to access this page.</p><button class="btn btn-primary" onclick="openAuthModal('login')">Sign in</button></div>`; }
 
 function safeValue(id) {
   const el = document.getElementById(id);
-  if (!el) {
-    console.error(`Missing element: ${id}`);
-    toast('UI error (missing field)', 'error');
-    return null;
-  }
+  if (!el) { console.error(`Missing element: ${id}`); toast('UI error (missing field)', 'error'); return null; }
   return el.value;
 }
 
@@ -1681,7 +1553,6 @@ function formatBytes(bytes) {
 
 function timeAgo(iso) {
   if (!iso) return '';
-  
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
@@ -1710,7 +1581,7 @@ function setLoading(btn, loading) {
   if (!btn) return;
   if (loading) {
     btn._origText = btn.innerHTML; btn.disabled = true;
-    btn.innerHTML = `<svg class="spin" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z" opacity=".25"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5.75.75 0 0 0 1.5 0A8 8 0 0 0 8 0a.75.75 0 0 0 0 1.5Z"/></svg> Loading…`;
+    btn.innerHTML = `<svg class="spin" viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z" opacity=".25"/><path d="M8 1.5a6.5 6.5 0 0 1 6.5 6.5.75.75 0 0 0 1.5 0A8 8 0 0 0 8 0a.75.75 0 0 0 0 1.5Z"/></svg>`;
   } else {
     btn.disabled = false; btn.innerHTML = btn._origText || 'Submit';
   }
@@ -1734,13 +1605,13 @@ function getFileIcon(ext) {
 function skeletonRows(n) {
   return Array(n).fill(0).map(()=>`
     <div class="file-item" style="pointer-events:none;">
-      <div class="skeleton" style="width:36px;height:36px;border-radius:8px;"></div>
+      <div class="skeleton" style="width:34px;height:34px;border-radius:var(--radius);"></div>
       <div style="flex:1;min-width:0;">
         <div class="skeleton skeleton-line" style="width:180px;"></div>
-        <div class="skeleton skeleton-line" style="width:120px;height:12px;"></div>
+        <div class="skeleton skeleton-line" style="width:120px;height:11px;"></div>
       </div>
-      <div class="skeleton" style="width:60px;height:20px;border-radius:20px;"></div>
-      <div class="skeleton" style="width:50px;height:14px;border-radius:4px;"></div>
+      <div class="skeleton" style="width:56px;height:18px;border-radius:999px;"></div>
+      <div class="skeleton" style="width:48px;height:13px;border-radius:4px;"></div>
     </div>
   `).join('');
 }
@@ -1748,9 +1619,9 @@ function skeletonRows(n) {
 function skeletonStats(n) {
   return `<div class="stats-grid">${Array(n).fill(0).map(()=>`
     <div class="stat-card">
-      <div class="skeleton" style="width:28px;height:28px;border-radius:4px;margin-bottom:8px;"></div>
-      <div class="skeleton" style="height:28px;width:80px;border-radius:4px;margin-bottom:4px;"></div>
-      <div class="skeleton" style="height:14px;width:100px;border-radius:4px;"></div>
+      <div class="skeleton" style="width:26px;height:26px;border-radius:4px;margin-bottom:10px;"></div>
+      <div class="skeleton" style="height:26px;width:80px;border-radius:4px;margin-bottom:4px;"></div>
+      <div class="skeleton" style="height:13px;width:100px;border-radius:4px;"></div>
     </div>
   `).join('')}</div>`;
 }

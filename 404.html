@@ -1,169 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>404 - Page Not Found</title>
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-
-    body {
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at top, #1b1f2a, #0d0f14);
-      color: #fff;
-      text-align: center;
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* ⭐ STARFIELD */
-    .star {
-      position: absolute;
-      width: 2px;
-      height: 2px;
-      background: white;
-      border-radius: 50%;
-      opacity: 0.6;
-      animation: twinkle linear infinite;
-    }
-
-    @keyframes twinkle {
-      0% { transform: translateY(0); opacity: 0.2; }
-      50% { opacity: 1; }
-      100% { transform: translateY(100vh); opacity: 0.2; }
-    }
-
-    .container {
-      max-width: 600px;
-      padding: 20px;
-      z-index: 2;
-    }
-
-    /* h1 {
-      font-size: 120px;
-      font-weight: 800;
-      letter-spacing: 5px;
-      color: #ff4d4d;
-      margin-bottom: 10px;
-    } */
-
-    h2 {
-      font-size: 28px;
-      margin-bottom: 15px;
-    }
-
-    p {
-      font-size: 16px;
-      opacity: 0.7;
-      margin-bottom: 30px;
-      line-height: 1.5;
-    }
-
-    a {
-      display: inline-block;
-      padding: 12px 24px;
-      background: #58a6ff;
-      color: white;
-      text-decoration: none;
-      border-radius: 10px;
-      transition: 0.2s ease;
-      font-weight: bold;
-    }
-
-    a:hover {
-      background: #3c6ea8;
-      transform: translateY(-2px);
-    }
-
-    .ghost-wrap {
-      animation: float 2s ease-in-out infinite;
-      display: inline-block;
-    }
-
-    .ghost {
-      font-size: 60px;
-      transition: transform 0.3s ease;
-      display: inline-block;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    .text {
-      font-size: 80px;
-      font-weight: bold;
-      color: #ff4d4d;
-      
-      text-shadow:
-          1px 1px 0 #cc0000,
-          2px 2px 0 #b30000,
-          3px 3px 0 #990000,
-          4px 4px 0 #800000,
-          5px 5px 0 #660000,
-          6px 6px 0 #4d0000;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Delta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/404.css">
 </head>
-
-<script>
-  window.addEventListener("DOMContentLoaded", () => {
-    const ghost = document.querySelector(".ghost");
-
-    function randomRotate() {
-      const angle = Math.floor(Math.random() * 360);
-      ghost.style.transform = `rotate(${angle}deg)`;
-    }
-
-    randomRotate();
-    setInterval(randomRotate, 900);
-  });
-</script>
-
 <body>
-  <script>
-    for (let i = 0; i < 80; i++) {
-      const star = document.createElement("div");
-      star.className = "star";
 
-      star.style.left = Math.random() * 100 + "vw";
-      star.style.top = Math.random() * 100 + "vh";
-
-      const size = Math.random() * 2 + 1;
-      star.style.width = size + "px";
-      star.style.height = size + "px";
-
-      star.style.animationDuration = (3 + Math.random() * 5) + "s";
-      star.style.opacity = Math.random();
-
-      document.body.appendChild(star);
-    }
-  </script>
+  <div class="bg-grid"></div>
 
   <div class="container">
-    <div class="ghost-wrap">
-      <div class="ghost">👻</div>
+    <div class="glitch-wrap">
+      <div class="four-oh-four" aria-label="404">
+        <span class="digit" data-char="4">4</span>
+        <span class="digit zero" data-char="0">0</span>
+        <span class="digit" data-char="4">4</span>
+      </div>
     </div>
 
-    <h1 class="text">! 404 !</h1>
-    <h2>Page Not Found</h2>
+    <div class="content">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Page not found
+      </div>
+      <h1>Lost in the void</h1>
+      <p>The page you're looking for has drifted off into the abyss. It might have been moved, deleted, or never existed in the first place.</p>
 
-    <p>
-      The page you're looking for doesn't exist or has been moved.<br/>
-      Double-check the URL or go back home.
-    </p>
+      <div class="actions">
+        <a href="index.html" class="btn btn-primary">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Z"/></svg>
+          Go home
+        </a>
+        <a href="javascript:history.back()" class="btn btn-secondary">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"/></svg>
+          Go back
+        </a>
+      </div>
 
-    <a href="https://rennivik.github.io/Delta">Go Home</a>
+      <div class="links">
+        <span class="links-label">Or try:</span>
+        <a href="index.html#explore">Explore files</a>
+        <span class="sep">·</span>
+        <a href="index.html#upload">Upload</a>
+        <span class="sep">·</span>
+        <a href="https://github.com/Rennivik" target="_blank">GitHub</a>
+      </div>
+    </div>
+
+    <div class="footer-mono">
+      <span>ERR_404</span>
+      <span class="sep">·</span>
+      <span>© Rennivik 2026</span>
+      <span class="sep">·</span>
+      <span id="ts"></span>
+    </div>
   </div>
+
+  <script>
+    // Timestamp
+    document.getElementById('ts').textContent = new Date().toISOString().split('T')[0];
+
+    // Theme persistence
+    const saved = localStorage.getItem('delta_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+
+    // Glitch digits on hover
+    const digits = document.querySelectorAll('.digit');
+    const chars = '0123456789ΔΩΨΞ!?#@%';
+    digits.forEach(digit => {
+      const orig = digit.dataset.char;
+      digit.addEventListener('mouseenter', () => {
+        let count = 0;
+        const interval = setInterval(() => {
+          digit.textContent = chars[Math.floor(Math.random() * chars.length)];
+          count++;
+          if (count > 8) { clearInterval(interval); digit.textContent = orig; }
+        }, 50);
+      });
+    });
+  </script>
 </body>
 </html>

@@ -1,209 +1,252 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Delta</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
-<div id="wake-overlay" style="
-  position:fixed;inset:0;
-  background:var(--bg-primary);
-  z-index:9999;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  gap:20px;
-">
-  <img src="assets/images/logo.png" width="48" height="48" />
-  <div style="text-align:center;">
-    <div style="font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Delta</div>
-    <div style="font-size:13px;color:var(--text-secondary);">
-      <span id="wake-status">Connecting to server</span><span id="wake-dots">...</span>
+  <div id="wake-overlay"
+    style="position:fixed;inset:0;background:var(--bg-primary);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;">
+    <img src="assets/images/logo.png" width="44" height="44" />
+    <div style="text-align:center;">
+      <div
+        style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-0.03em;color:var(--text-primary);margin-bottom:4px;">
+        Delta</div>
+      <div style="font-size:13px;color:var(--text-secondary);">
+        <span id="wake-status">Connecting to server</span><span id="wake-dots">...</span>
+      </div>
+    </div>
+    <div style="width:200px;background:var(--bg-tertiary);border-radius:2px;height:2px;overflow:hidden;">
+      <div id="wake-bar"
+        style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width 0.3s ease;"></div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);">servers sleep when idle
     </div>
   </div>
-  <div style="width:200px;background:var(--bg-tertiary);border-radius:4px;height:3px;overflow:hidden;">
-    <div id="wake-bar" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width 0.3s ease;"></div>
+
+  <div id="toast-container"></div>
+
+  <nav class="navbar" id="navbar">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" onclick="navigate('home')">
+        <span class="logo-text">Delta</span><span class="logo-dot">.</span>
+      </a>
+      <div class="nav-search-wrap">
+        <div class="nav-search" id="nav-search-box">
+          <svg class="search-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+            <path
+              d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z" />
+          </svg>
+          <input type="text" placeholder="Search files…" id="search-input" autocomplete="off" />
+          <kbd>⌘ K</kbd>
+        </div>
+      </div>
+      <div class="nav-actions" id="nav-actions"></div>
+    </div>
+  </nav>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav">
+        <a class="sidebar-item active" data-view="home" onclick="navigate('home')">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path
+              d="M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z" />
+          </svg>
+          Home
+        </a>
+        <a class="sidebar-item" data-view="explore" onclick="navigate('explore')">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path
+              d="M8 .25a7.75 7.75 0 1 0 0 15.5A7.75 7.75 0 0 0 8 .25ZM1.75 8a6.25 6.25 0 1 1 12.5 0 6.25 6.25 0 0 1-12.5 0ZM8 3.5a.75.75 0 0 1 .75.75v3.25l2 1a.75.75 0 0 1-.75 1.3L7.75 8.5A.75.75 0 0 1 7.25 8V4.25A.75.75 0 0 1 8 3.5Z" />
+          </svg>
+          Explore
+        </a>
+        <a class="sidebar-item" data-view="my-files" onclick="navigate('my-files')">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path
+              d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1Z" />
+          </svg>
+          My Files
+        </a>
+        <a class="sidebar-item" data-view="upload" onclick="navigate('upload')">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path
+              d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Zm-6 9.5a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z" />
+          </svg>
+          Upload
+        </a>
+        <a class="sidebar-item" data-view="inbox" onclick="navigate('inbox')" style="position:relative;">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path
+              d="M0 4.75C0 3.784.784 3 1.75 3h12.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25ZM8 9.5l-4.5-3h9Z" />
+          </svg>
+          Inbox
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="sidebar-item" onclick="toggleTheme()" id="theme-toggle">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Z" />
+          </svg>
+          Toggle Theme
+        </a>
+        <a class="sidebar-item" href="https://github.com/Rennivik" target="_blank">
+          <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor">
+            <path
+              d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z" />
+          </svg>
+          GitHub
+        </a>
+        <a href="https://rennivik.github.io" class="sidebar-renn-link">Renn<span>.</span></a>
+      </div>
+    </aside>
+
+    <main class="main-content" id="main-content"></main>
   </div>
-  <div style="font-size:12px;color:var(--text-muted);">Servers sleep when idle</div>
-</div>
 
-<div id="toast-container"></div>
-
-<nav class="navbar" id="navbar">
-  <div class="nav-inner">
-    <a href="#" class="nav-logo" onclick="navigate('home')">
-      <span class="logo-text">Delta</span>
-    </a>
-    <div class="nav-search-wrap">
-      <div class="nav-search" id="nav-search-box">
-        <svg class="search-icon" viewBox="0 0 16 16" width="16" height="14" fill="currentColor">
-          <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/>
+  <div class="modal-overlay hidden" id="auth-modal">
+    <div class="modal" id="auth-modal-inner">
+      <button class="modal-close" onclick="closeAuthModal()">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+          <path
+            d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
         </svg>
-        <input type="text" placeholder="Search files…" id="search-input" autocomplete="off" />
-        <kbd>⌘ K</kbd>
+      </button>
+      <div class="modal-header">
+        <h2 id="auth-modal-title">Sign in to Delta</h2>
+        <p id="auth-modal-sub">Share files with anyone.</p>
+      </div>
+      <div id="login-form">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="login-username" placeholder="your_username" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
+            <button class="input-toggle" onclick="togglePass('login-password')">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path
+                  d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.794 6.527 12.5 8 12.5c1.473 0 2.825-.706 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.825 4.206 9.473 3.5 8 3.5c-1.473 0-2.825.706-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="handleLogin()"><span>Sign in</span></button>
+        <p class="auth-switch">New to Delta? <a onclick="switchAuthMode('register')">Create an account</a></p>
+      </div>
+      <div id="register-form" class="hidden">
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="reg-username" placeholder="your_username" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrap">
+            <input type="password" id="reg-password" placeholder="at least 6 characters" autocomplete="new-password" />
+            <button class="input-toggle" onclick="togglePass('reg-password')">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path
+                  d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.794 6.527 12.5 8 12.5c1.473 0 2.825-.706 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.825 4.206 9.473 3.5 8 3.5c-1.473 0-2.825.706-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z" />
+              </svg>
+            </button>
+          </div>
+          <div class="password-strength" id="pass-strength"></div>
+        </div>
+        <div class="form-group">
+          <label>Avatar Style</label>
+          <div class="avatar-picker" id="avatar-picker"></div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="handleRegister()"><span>Create account</span></button>
+        <p class="auth-switch">Already have an account? <a onclick="switchAuthMode('login')">Sign in</a></p>
       </div>
     </div>
-    <div class="nav-actions" id="nav-actions"></div>
   </div>
-</nav>
 
-<div class="app-shell">
-  <aside class="sidebar" id="sidebar">
-    <nav class="sidebar-nav">
-      <a class="sidebar-item active" data-view="home" onclick="navigate('home')">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z"/></svg>
-        Home
-      </a>
-      <a class="sidebar-item" data-view="explore" onclick="navigate('explore')">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 .25a7.75 7.75 0 1 0 0 15.5A7.75 7.75 0 0 0 8 .25ZM1.75 8a6.25 6.25 0 1 1 12.5 0 6.25 6.25 0 0 1-12.5 0ZM8 3.5a.75.75 0 0 1 .75.75v3.25l2 1a.75.75 0 0 1-.75 1.3L7.75 8.5A.75.75 0 0 1 7.25 8V4.25A.75.75 0 0 1 8 3.5Z"/></svg>
-        Explore
-      </a>
-      <a class="sidebar-item" data-view="my-files" onclick="navigate('my-files')">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1Z"/></svg>
-        My Files
-      </a>
-      <a class="sidebar-item" data-view="upload" onclick="navigate('upload')">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Zm-6 9.5a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"/></svg>
-        Upload
-      </a>
-      <a class="sidebar-item" data-view="inbox" onclick="navigate('inbox')" style="position:relative;">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M0 4.75C0 3.784.784 3 1.75 3h12.5c.966 0 1.75.784 1.75 1.75v7.5A1.75 1.75 0 0 1 14.25 14H1.75A1.75 1.75 0 0 1 0 12.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25ZM8 9.5l-4.5-3h9Z"/></svg>
-        Inbox
-      </a>
-    </nav>
-    <div class="sidebar-footer">
-      <a class="sidebar-item" onclick="toggleTheme()" id="theme-toggle">
-        ☀ Toggle Theme
-      </a>
-      <a class="sidebar-item" href="https://github.com" target="_blank">
-        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
-        GitHub
-      </a>
-
-      <a href="https://rennivik.github.io" style="font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.03em; text-decoration: none; color: var(--logo);">Renn<span style="color: #e9967a;">.</span></a>
+  <div class="modal-overlay hidden" id="profile-modal">
+    <div class="modal modal-wide" id="profile-modal-inner">
+      <button class="modal-close" onclick="closeProfileModal()">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+          <path
+            d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+        </svg>
+      </button>
+      <div id="profile-modal-content"></div>
     </div>
-  </aside>
+  </div>
 
-  <main class="main-content" id="main-content"></main>
-</div>
-
-<div class="modal-overlay hidden" id="auth-modal">
-  <div class="modal" id="auth-modal-inner">
-    <button class="modal-close" onclick="closeAuthModal()">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
-    </button>
-    <div class="modal-header">
-      <h2 id="auth-modal-title">Sign in to Delta</h2>
-      <p id="auth-modal-sub">Share files with anyone.</p>
+  <div class="modal-overlay hidden" id="preview-modal">
+    <div class="modal modal-preview" id="preview-modal-inner">
+      <button class="modal-close" onclick="closePreviewModal()">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+          <path
+            d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+        </svg>
+      </button>
+      <div id="preview-modal-content"></div>
     </div>
-    <div id="login-form">
-      <div class="form-group">
-        <label>Username</label>
-        <input type="text" id="login-username" placeholder="username" autocomplete="username" />
+  </div>
+
+  <div class="modal-overlay hidden" id="compose-modal">
+    <div class="modal" id="compose-modal-inner">
+      <button class="modal-close" onclick="closeComposeModal()">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+          <path
+            d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+        </svg>
+      </button>
+      <div class="modal-header">
+        <h2>New Message</h2>
+        <p>Send a message to another user</p>
       </div>
-      <div class="form-group">
-        <label>Password</label>
-        <div class="input-wrap">
-          <input type="password" id="login-password" placeholder="password" autocomplete="current-password" />
-          <button class="input-toggle" onclick="togglePass('login-password')">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.794 6.527 12.5 8 12.5c1.473 0 2.825-.706 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.825 4.206 9.473 3.5 8 3.5c-1.473 0-2.825.706-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>
-          </button>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label>To</label>
+          <input type="text" id="compose-to" placeholder="username" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea id="compose-body" placeholder="Write your message…" rows="4"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" id="compose-send-btn" onclick="sendCompose()">Send message</button>
+          <button class="btn btn-secondary" onclick="closeComposeModal()">Cancel</button>
         </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="handleLogin()"><span>Sign in</span></button>
-      <p class="auth-switch">New to Delta? <a onclick="switchAuthMode('register')">Create an account</a></p>
-    </div>
-  
-    <div id="register-form" class="hidden">
-      <div class="form-group">
-        <label>Username</label>
-        <input type="text" id="reg-username" placeholder="username" autocomplete="username" />
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <div class="input-wrap">
-          <input type="password" id="reg-password" placeholder="at least 6 characters" autocomplete="new-password" />
-          <button class="input-toggle" onclick="togglePass('reg-password')">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.794 6.527 12.5 8 12.5c1.473 0 2.825-.706 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.825 4.206 9.473 3.5 8 3.5c-1.473 0-2.825.706-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>
-          </button>
-        </div>
-        <div class="password-strength" id="pass-strength"></div>
-      </div>
-      <div class="form-group">
-        <label>Avatar Style</label>
-        <div class="avatar-picker" id="avatar-picker"></div>
-      </div>
-      <button class="btn btn-primary btn-full" onclick="handleRegister()"><span>Create account</span></button>
-      <p class="auth-switch">Already have an account? <a onclick="switchAuthMode('login')">Sign in</a></p>
     </div>
   </div>
-</div>
 
-<div class="modal-overlay hidden" id="profile-modal">
-  <div class="modal modal-wide" id="profile-modal-inner">
-    <button class="modal-close" onclick="closeProfileModal()">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
-    </button>
-    <div id="profile-modal-content"></div>
-  </div>
-</div>
-
-<div class="modal-overlay hidden" id="preview-modal">
-  <div class="modal modal-preview" id="preview-modal-inner">
-    <button class="modal-close" onclick="closePreviewModal()">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
-    </button>
-    <div id="preview-modal-content"></div>
-  </div>
-</div>
-
-<div class="modal-overlay hidden" id="compose-modal">
-  <div class="modal" id="compose-modal-inner">
-    <button class="modal-close" onclick="closeComposeModal()">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
-    </button>
-    <div class="modal-header">
-      <h2>New Message</h2>
-      <p>Send a message to another user</p>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <div class="form-group">
-        <label>To</label>
-        <input type="text" id="compose-to" placeholder="username" autocomplete="off" />
+  <div class="modal-overlay hidden" id="cmd-palette">
+    <div class="cmd-modal">
+      <div class="cmd-search">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+          <path
+            d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z" />
+        </svg>
+        <input type="text" id="cmd-input" placeholder="Search files, navigate…" />
+        <kbd>ESC</kbd>
       </div>
-      <div class="form-group">
-        <label>Message</label>
-        <textarea id="compose-body" placeholder="Write your message…" rows="4"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" id="compose-send-btn" onclick="sendCompose()">Send message</button>
-        <button class="btn btn-secondary" onclick="closeComposeModal()">Cancel</button>
+      <div id="cmd-results"></div>
+      <div class="cmd-footer">
+        <span><kbd>↑↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> select</span>
+        <span><kbd>ESC</kbd> close</span>
       </div>
     </div>
   </div>
-</div>
 
-<div class="modal-overlay hidden" id="cmd-palette">
-  <div class="cmd-modal">
-    <div class="cmd-search">
-      <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"/></svg>
-      <input type="text" id="cmd-input" placeholder="Search files, navigate…" />
-      <kbd>ESC</kbd>
-    </div>
-    <div id="cmd-results"></div>
-    <div class="cmd-footer">
-      <span><kbd>↑↓</kbd> navigate</span>
-      <span><kbd>↵</kbd> select</span>
-      <span><kbd>ESC</kbd> close</span>
-    </div>
-  </div>
-</div>
-
-<script src="js/app.js"></script>
+  <script src="js/app.js"></script>
 </body>
+
 </html>
