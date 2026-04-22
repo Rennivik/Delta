@@ -1,5 +1,5 @@
 const API = 'https://delta-server-vyed.onrender.com';
-const ADMIN_USER = 'Rennivik';
+const ADMIN_USERS = ['Rennivik', 'BanditScientistJR', 'Delta System'];
 
 let state = {
   user: null,
@@ -40,6 +40,17 @@ async function waitForAPI() {
 
   while (true) {
     attempts++;
+
+    if (attempts == 11) {
+      msg = "We couldn't connect to the API; Please try again later"
+      statusEl.textContent = msg;
+      clearInterval(dotInterval);
+      clearInterval(barInterval);
+      dotsEl.textContent = ''
+      barEl.style.width = '0%'
+      break
+    }
+
     try {
       const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(8000) });
       if (res.ok) {
@@ -61,7 +72,12 @@ async function waitForAPI() {
     } catch {}
 
     const messages = ['Waking up the server','Still warming up','Almost there','Hang tight','Nearly ready'];
-    const msg = messages[Math.min(Math.floor(attempts / 3), messages.length - 1)];
+    msg = messages[Math.min(Math.floor(attempts / 3), messages.length - 1)];
+
+    if (attempts == 10) {
+      msg = "Final Try"
+    }
+
     if (statusEl) statusEl.textContent = msg;
     await new Promise(r => setTimeout(r, 2000));
   }
@@ -247,7 +263,7 @@ function renderNavActions() {
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75Zm-6 9.5a.75.75 0 0 0 0 1.5h10.5a.75.75 0 0 0 0-1.5H2.75Z"/></svg>
             Upload file
           </div>
-          ${state.user.username === ADMIN_USER ? `
+          ${ADMIN_USERS.includes(state.user.username) ? `
           <div class="dropdown-divider"></div>
           <div class="dropdown-item" onclick="navigate('admin');closeDropdown()" style="color:var(--warning);">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z"/></svg>
@@ -649,7 +665,7 @@ async function sendCompose() {
 }
 
 async function renderAdmin(el) {
-  if (!state.user || state.user.username !== ADMIN_USER) {
+  if (!state.user || !ADMIN_USERS.includes(state.user.username)) {
     el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Access denied</h3></div>`;
     return;
   }
@@ -734,7 +750,7 @@ async function loadAdminUsers() {
     el.innerHTML = `
       <div class="card-header"><h3>All users (${res.users.length})</h3></div>
       ${res.users.map(u => {
-        const isAdmin = u.username === ADMIN_USER;
+        const isAdmin = ADMIN_USERS.includes(u.username)
         return `
           <div class="file-item" style="grid-template-columns:44px 1fr auto;">
             <img src="${escapeHtml(u.avatar)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
